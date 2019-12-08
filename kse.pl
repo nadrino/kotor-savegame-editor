@@ -89,7 +89,7 @@
 # C:\Users\COMPUTER NAME\AppData\Local\VirtualStore\Program Files (x86)\LucasArts\SWKotOR
 # C:\Users\COMPUTER NAME\AppData\Local\VirtualStore\Program Files\LucasArts\SWKotOR
 
-use lib '.\lib';
+use lib 'lib';
 
 #use strict;
 use feature 'switch';
