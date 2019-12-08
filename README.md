@@ -12,12 +12,13 @@ cpan install Tk::HList
 cpan install Tk::Autoscroll
 cpan install Tk::DynaTabFrame
 cpan install Win32::FileOp
+cpan install PAR::Packer
 ```
 - Compile the perl script :
 ```bat
 pp --gui -o KSE.exe kse.pl
 ```
-- KSE.exe
+- Launch KSE.exe
 
 ## Configuration
 By default, kse.ini contains the kotor path to the Steam version. Feel free to set yours by hand or use KPF (https://bitbucket.org/kotorsge-team/kpf-gtk/src/master/).
