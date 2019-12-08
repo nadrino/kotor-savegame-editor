@@ -12,7 +12,7 @@ cpan install Tk::HList
 cpan install Tk::Autoscroll
 cpan install Tk::DynaTabFrame
 cpan install Win32::FileOp
-perl -MCPAN -e "force install PAR::Packer" 
+cpan -fi PAR::Packer
 ```
 - Compile the perl script :
 ```bat
