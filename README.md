@@ -8,7 +8,7 @@ Kotor Savegame Editor - Recompiled with extra functionnalities
 - Exectue .bat file to setup the environement
 - Install required dependencies :
 ```bat
-cpan install Tk::
+cpan install Tk::HList
 cpan install Tk::Autoscroll
 cpan install Tk::DynaTabFrame
 cpan install Win32::FileOp
