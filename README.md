@@ -5,7 +5,8 @@ Kotor Savegame Editor - Recompiled with extra functionnalities
 
 - Install perl 5.16.3.1 32bits (portable) http://strawberryperl.com/releases.html
 - Unzip
-- Exectue .bat file to setup the environement
+- Open Powershell
+- Exectue .bat file in the unzipped directory to setup the environement for perl
 - Install required dependencies :
 ```bat
 cpan install Tk::HList
