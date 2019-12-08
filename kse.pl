@@ -89,7 +89,7 @@
 # C:\Users\COMPUTER NAME\AppData\Local\VirtualStore\Program Files (x86)\LucasArts\SWKotOR
 # C:\Users\COMPUTER NAME\AppData\Local\VirtualStore\Program Files\LucasArts\SWKotOR
 
-# use lib 'C:\Users\ablanche\Desktop\KSE_337_source\libraries';
+use lib '.\lib';
 
 #use strict;
 use feature 'switch';
@@ -340,11 +340,11 @@ $tree->bind('<ButtonPress-3>'=>\&RWhat);
 my $versionlabel=$mw->Label(-text=>$version)->place(-relx=>890/$x,-rely=>590/$y,-anchor=>'se'); #create version label
 my $use_tsl_cloud = 0;
 
-if((-e "$workingdir/KSE.ini") == 0)
-{
-	my @o = ("KPF.exe", "-2ini", "-logfile");
-	system(@o);
-}
+# if((-e "$workingdir/KSE.ini") == 0)
+# {
+# 	my @o = ("KPF.exe", "-2ini", "-logfile");
+# 	system(@o);
+# }
 
 if(-e "$workingdir/KSE.ini")
 {
