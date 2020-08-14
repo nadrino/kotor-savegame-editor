@@ -1352,31 +1352,31 @@ sub Populate_Level1 {
 	}
 	my $tmpfil_git;
 	unless($tmpfil_git=$erf2->export_resource_to_temp_file("$last_module.git")) {                     #export the module.ifo file as a temp file
-		die "Could not find $last_module.git inside of $last_module.sav";
+		#die "Could not find $last_module.git inside of $last_module.sav";
 	}
-	my $gff_git=Bioware::GFF->new();                                                            #create GFF for module.ifo
-	unless (my $tmp=$gff_git->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
-		die "Could not read from temp file containing module.ifo";
-	}
-
-	my $git_placablelist=$gff_git->{Main}{Fields}[$gff_git->{Main}->get_field_ix_by_label('Placeable List')]{Value};
-	my $len = scalar @$git_placablelist;
-	print "Number of placables in current module: ".$len."\n";
-	my $in2 = 0;
-	foreach(@$git_placablelist)
-	{
-		my $itemlist = $git_placablelist->[$in2]{Fields}[$git_placablelist->[$in2]->get_field_ix_by_label('ItemList')]{Value};
-		if(scalar @$itemlist){
-			my $ref = $git_placablelist->[$in2]{Fields}[$git_placablelist->[$in2]->get_field_ix_by_label('Tag')]{Value};
-			print $in2." -> ".$ref."\n";
-		}
-		my $in3=0;
-		foreach(@$itemlist){
-			my $item = $itemlist->[$in3]{Fields}[$itemlist->[$in3]->get_field_ix_by_label('Tag')]{Value};
-			print $in2."   -> ".$item."\n";
-		}
-		$in2++;
-	}
+	# my $gff_git=Bioware::GFF->new();                                                            #create GFF for module.ifo
+	# unless (my $tmp=$gff_git->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
+	# 	die "Could not read from temp file containing module.ifo";
+	# }
+	#
+	# my $git_placablelist=$gff_git->{Main}{Fields}[$gff_git->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+	# my $len = scalar @$git_placablelist;
+	# print "Number of placables in current module: ".$len."\n";
+	# my $in2 = 0;
+	# foreach(@$git_placablelist)
+	# {
+	# 	my $itemlist = $git_placablelist->[$in2]{Fields}[$git_placablelist->[$in2]->get_field_ix_by_label('ItemList')]{Value};
+	# 	if(scalar @$itemlist){
+	# 		my $ref = $git_placablelist->[$in2]{Fields}[$git_placablelist->[$in2]->get_field_ix_by_label('Tag')]{Value};
+	# 		print $in2." -> ".$ref."\n";
+	# 	}
+	# 	my $in3=0;
+	# 	foreach(@$itemlist){
+	# 		my $item = $itemlist->[$in3]{Fields}[$itemlist->[$in3]->get_field_ix_by_label('Tag')]{Value};
+	# 		print $in2."   -> ".$item."\n";
+	# 	}
+	# 	$in2++;
+	# }
 
 	my $mod_playerlist=$gff_ifo->{Main}{Fields}[$gff_ifo->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
 
@@ -1459,9 +1459,12 @@ sub Populate_Level1 {
 	$tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
 	$tree->add($treeitem."#Area", -text=>'Area Name: '. $area_name,-data=>$area_name);
 	$tree->add($treeitem."#LastModule",-text=>'Last Module: '.$last_module,-data=>$last_module);
-	$tree->add($treeitem."#LastModule#Placables",-text=>"Placables");  $tree->hide('entry',$treeitem."#LastModule#Placables");
-	$tree->add($treeitem."#LastModule#Stores",-text=>"Stores");  $tree->hide('entry',$treeitem."#LastModule#Stores");
-	$tree->add($treeitem."#LastModule#Doors",-text=>"Doors");  $tree->hide('entry',$treeitem."#LastModule#Doors");
+	# $tree->add($treeitem."#LastModule#Placables",-text=>"Placables");  $tree->hide('entry',$treeitem."#LastModule#Placables");
+	# $tree->add($treeitem."#LastModule#Placables#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Placables#");
+	# $tree->add($treeitem."#LastModule#Stores",-text=>"Stores");  $tree->hide('entry',$treeitem."#LastModule#Stores");
+	# $tree->add($treeitem."#LastModule#Stores#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Stores#");
+	# $tree->add($treeitem."#LastModule#Doors",-text=>"Doors");  $tree->hide('entry',$treeitem."#LastModule#Doors");
+	# $tree->add($treeitem."#LastModule#Doors#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Doors#");
 	$tree->add($treeitem."#XPosition",-text=>'XPosition: '.$XPosition,-data=>'can modify');
 	$tree->add($treeitem."#YPosition",-text=>'YPosition: '.$YPosition,-data=>'can modify');
 	$tree->add($treeitem."#ZPosition",-text=>'ZPosition: '.$ZPosition,-data=>$ZPosition);
@@ -2313,6 +2316,9 @@ sub SpawnWidgets{
 		SpawnAddInventoryWidgets($treeitem,\$inv_gff); }
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
+	}
+	elsif ($treeitem =~/#LastModule#Placables#/){
+
 	}
 	elsif ($treeitem =~/#Equipment#/) {#print "laun";
 		if($treeitem =~/#(NPC[0-9]*)#/)
