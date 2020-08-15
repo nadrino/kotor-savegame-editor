@@ -93,6 +93,8 @@ use lib 'lib';
 
 #use strict;
 use feature 'switch';
+# use warnings;
+# use warnings FATAL => 'all';
 use Bioware::GFF 0.64;
 use Bioware::TwoDA 0.14;
 use Bioware::ERF 0.12;
@@ -750,7 +752,8 @@ sub What {  #called by BrowseCmd
 				elsif ($levels[2] eq 'Inventory') { Populate_Inventory($parm1) }
 			}
 			if ($#levels == 3) {
-				if    ($levels[2] eq 'NPCs')    { Populate_NPC($parm1) }
+				if    ($levels[2] eq 'NPCs')      { Populate_NPC($parm1) }
+				elsif ($levels[3] eq 'Placables') { Populate_Placables($parm1) }
 			}
 		}
 	}
@@ -1459,12 +1462,12 @@ sub Populate_Level1 {
 	$tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
 	$tree->add($treeitem."#Area", -text=>'Area Name: '. $area_name,-data=>$area_name);
 	$tree->add($treeitem."#LastModule",-text=>'Last Module: '.$last_module,-data=>$last_module);
-	# $tree->add($treeitem."#LastModule#Placables",-text=>"Placables");  $tree->hide('entry',$treeitem."#LastModule#Placables");
-	# $tree->add($treeitem."#LastModule#Placables#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Placables#");
-	# $tree->add($treeitem."#LastModule#Stores",-text=>"Stores");  $tree->hide('entry',$treeitem."#LastModule#Stores");
-	# $tree->add($treeitem."#LastModule#Stores#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Stores#");
-	# $tree->add($treeitem."#LastModule#Doors",-text=>"Doors");  $tree->hide('entry',$treeitem."#LastModule#Doors");
-	# $tree->add($treeitem."#LastModule#Doors#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Doors#");
+	$tree->add($treeitem."#LastModule#Placables",-text=>"Placables");  $tree->hide('entry',$treeitem."#LastModule#Placables");
+	$tree->add($treeitem."#LastModule#Placables#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Placables#");
+	$tree->add($treeitem."#LastModule#Stores",-text=>"Stores");  $tree->hide('entry',$treeitem."#LastModule#Stores");
+	$tree->add($treeitem."#LastModule#Stores#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Stores#");
+	$tree->add($treeitem."#LastModule#Doors",-text=>"Doors");  $tree->hide('entry',$treeitem."#LastModule#Doors");
+	$tree->add($treeitem."#LastModule#Doors#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Doors#");
 	$tree->add($treeitem."#XPosition",-text=>'XPosition: '.$XPosition,-data=>'can modify');
 	$tree->add($treeitem."#YPosition",-text=>'YPosition: '.$YPosition,-data=>'can modify');
 	$tree->add($treeitem."#ZPosition",-text=>'ZPosition: '.$ZPosition,-data=>$ZPosition);
@@ -2195,6 +2198,121 @@ sub Populate_NPC{
 		$tree->add($treeitem."#Equipment#RWeapon2",-text=>"Right Weapon 2:\t$rweapon2");  $tree->hide('entry', $treeitem."#Equipment#RWeapon2");
 		$tree->add($treeitem."#Equipment#LWeapon2",-text=>"Left Weapon 2:\t$lweapon2");   $tree->hide('entry', $treeitem."#Equipment#LWeapon2");
 	}
+	$tree->autosetmode();
+}
+
+#>>>>>>>>>>>>>>>>>>>>
+sub Populate_Placables{
+	#>>>>>>>>>>>>>>>>>>>>
+	print "Populate_Placables...\n";
+
+	my $treeitem=shift;
+	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
+	my $gamedir=(split /#/,$treeitem)[2]; print "\$gamedir is: $gamedir\n";
+
+	my $registered_path;
+	if ($gameversion==1) {
+		$registered_path=$path{kotor};
+	}
+	elsif ($gameversion==2) {
+		$registered_path=$path{tsl};
+	}
+	elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+		$registered_path=$path{tsl};
+	}
+	elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+		$registered_path=$path{tjm};
+	}
+	elsif ($gameversion==4) {
+		$registered_path=$path{tjm};
+	}
+
+	my $res_gff=Bioware::GFF->new();
+	unless (my $tmp=$res_gff->read_gff_file("$registered_path\\Saves\\$gamedir\\savenfo.res")) {
+		die ("Could not read $registered_path\\Saves\\$gamedir\\savenfo.res");
+	}
+	my $last_module=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
+
+	my $erf=Bioware::ERF->new();                                            		        #create ERF for savegame.sav
+	#read savegame.sav structure
+	unless (my $tmp=$erf->read_erf("$registered_path\\Saves\\$gamedir\\savegame.sav")) {
+		die "Could not read $registered_path\\Saves\\$gamedir\\savegame.sav";
+	}
+	my $tmpfil_inv;
+	unless ($tmpfil_inv=$erf->export_resource_to_temp_file("INVENTORY.res")) {                  #export inventory.res as a temp file
+		die "Could not find INVENTORY.res inside of $registered_path\\Saves\\$gamedir\\savegame.sav";
+	}
+
+	my $tmpfil_sav;
+	unless ($tmpfil_sav=$erf->export_resource_to_temp_file("$last_module.sav")) {               #export the last module as a temp file
+		die "Could not find $last_module.sav inside of $registered_path\\Saves\\$gamedir\\savegame.sav";
+	}
+
+	my $erf2=Bioware::ERF->new();                                                               #create ERF for last module
+	unless (my $tmp=$erf2->read_erf($tmpfil_sav->{'fn'})) {                                     #read last module structure
+		die "Could not read from temp file containing $last_module.sav";
+	}
+	$erf2->{'tmpfil'}=$tmpfil_sav;                                                              #tuck the temp file into the erf for safekeeping
+	$erf2->{'modulename'}="$last_module.sav";                                                   #tuck the module name into the erf for safekeeping
+	my $tmpfil_ifo;
+	unless($tmpfil_ifo=$erf2->export_resource_to_temp_file("module.ifo")) {                     #export the module.ifo file as a temp file
+		die "Could not find module.ifo inside of $last_module.sav";
+	}
+
+
+	# Looking for last module .git file where the inventory of all placable is stored
+	my $last_module_git;
+	for my $resource (@{$erf2->{'resources'}}) {
+		if($resource->{'res_ext'} eq "git") {
+			$last_module_git = lc $resource->{'res_ref'};
+		}
+	}
+
+	# Extracting the .git file as a temp file
+	my $tmpfil_git;
+	unless($tmpfil_git=$erf2->export_resource_to_temp_file("$last_module_git.git")) {
+		die "Could not find $last_module_git.git inside of $last_module.sav";
+	}
+
+	# Parsing the .git temp file
+	my $gff_git=Bioware::GFF->new();                                                            #create GFF for module.ifo
+	unless (my $tmp=$gff_git->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
+		die "Could not read from .git temp file";
+	}
+
+	# Looking for placable with an inventory
+	my $git_placablelist=$gff_git->{Main}{Fields}[$gff_git->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+	my $len = scalar @$git_placablelist;
+	print "Number of placables in current module: ".$len."\n";
+	my $i_placable = 0;
+	foreach(@$git_placablelist)
+	{
+		my $itemlist = $git_placablelist->[$i_placable]{Fields}[$git_placablelist->[$i_placable]->get_field_ix_by_label('ItemList')]{Value};
+		if(scalar @$itemlist){
+			my $ref = $git_placablelist->[$i_placable]{Fields}[$git_placablelist->[$i_placable]->get_field_ix_by_label('Tag')]{Value};
+			print $i_placable." -> ".$ref."\n";
+			$tree->add(
+				$treeitem."#".$i_placable."_".$ref,
+				-text=>$ref,
+				-data=>'can modify'
+			);
+			my $i_item=0;
+			foreach(@$itemlist){
+				my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
+				print $i_placable."   -> ".$item."\n";
+				$tree->add(
+					$treeitem."#".$i_placable."_".$ref."#".$i_item."_".$item,
+					-text=>$item,
+					-data=>'can modify'
+				);
+				$i_item++;
+			}
+		}
+
+
+		$i_placable++;
+	}
+
 	$tree->autosetmode();
 }
 
