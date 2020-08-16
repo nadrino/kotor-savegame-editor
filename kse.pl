@@ -1353,10 +1353,6 @@ sub Populate_Level1 {
 	unless (my $tmp=$gff_ifo->read_gff_file($tmpfil_ifo->{'fn'})) {                             #read module.ifo into GFF
 		die "Could not read from temp file containing module.ifo";
 	}
-	my $tmpfil_git;
-	unless($tmpfil_git=$erf2->export_resource_to_temp_file("$last_module.git")) {                     #export the module.ifo file as a temp file
-		#die "Could not find $last_module.git inside of $last_module.sav";
-	}
 
 
 	my $mod_playerlist=$gff_ifo->{Main}{Fields}[$gff_ifo->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
@@ -1438,17 +1434,18 @@ sub Populate_Level1 {
 		$in++;
 	}
 	$tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
-	$tree->add($treeitem."#Area", -text=>'Area Name: '. $area_name,-data=>$area_name);
-	$tree->add($treeitem."#LastModule",-text=>'Last Module: '.$last_module,-data=>$last_module);
-	$tree->add($treeitem."#LastModule#Placeables",-text=>"Placeables");  $tree->hide('entry',$treeitem."#LastModule#Placeables");
-	$tree->add($treeitem."#LastModule#Placeables#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Placeables#");
-	$tree->add($treeitem."#LastModule#Stores",-text=>"Stores");  $tree->hide('entry',$treeitem."#LastModule#Stores");
-	$tree->add($treeitem."#LastModule#Stores#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Stores#");
-	$tree->add($treeitem."#LastModule#Doors",-text=>"Doors");  $tree->hide('entry',$treeitem."#LastModule#Doors");
-	$tree->add($treeitem."#LastModule#Doors#",-text=>"");  $tree->hide('entry',$treeitem."#LastModule#Doors#");
-	$tree->add($treeitem."#XPosition",-text=>'XPosition: '.$XPosition,-data=>'can modify');
-	$tree->add($treeitem."#YPosition",-text=>'YPosition: '.$YPosition,-data=>'can modify');
-	$tree->add($treeitem."#ZPosition",-text=>'ZPosition: '.$ZPosition,-data=>$ZPosition);
+
+	$tree->add($treeitem."#Area", -text=>'Area Name: '. $area_name." (".$last_module.")",-data=>$area_name);
+	$tree->add($treeitem."#Area#Placeables",-text=>"Placeables");  	$tree->hide('entry',$treeitem."#Area#Placeables");
+	$tree->add($treeitem."#Area#Placeables#",-text=>"");  			$tree->hide('entry',$treeitem."#Area#Placeables#");
+	$tree->add($treeitem."#Area#Stores",-text=>"Stores");  			$tree->hide('entry',$treeitem."#Area#Stores");
+	$tree->add($treeitem."#Area#Stores#",-text=>"");  				$tree->hide('entry',$treeitem."#Area#Stores#");
+	$tree->add($treeitem."#Area#Doors",-text=>"Doors");  			$tree->hide('entry',$treeitem."#Area#Doors");
+	$tree->add($treeitem."#Area#Doors#",-text=>"");  				$tree->hide('entry',$treeitem."#Area#Doors#");
+	$tree->add($treeitem."#Area#XPosition",-text=>'XPosition: '.$XPosition,-data=>'can modify'); $tree->hide('entry',$treeitem."#Area#XPosition");
+	$tree->add($treeitem."#Area#YPosition",-text=>'YPosition: '.$YPosition,-data=>'can modify'); $tree->hide('entry',$treeitem."#Area#YPosition");
+	$tree->add($treeitem."#Area#ZPosition",-text=>'ZPosition: '.$ZPosition,-data=>$ZPosition);   $tree->hide('entry',$treeitem."#Area#ZPosition");
+
 	$tree->add($treeitem."#FirstName",-text=>"Player Name: $firstname",-data=>'can modify');
 	$tree->add($treeitem."#Gender",-text=>"Gender: $genders{$gender}",-data=>'can modify');
 	$tree->add($treeitem."#Appearance",-text=>"Appearance: $appearance_hash{$appearance}",-data=>'can modify');
@@ -2371,8 +2368,8 @@ sub SpawnWidgets{
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
 	}
-	elsif ($treeitem =~/#LastModule#Placeables#/){
-
+	elsif ($treeitem =~/#Area#Placeables#/){
+		# TODO: create a loop to find which placeable is selected
 	}
 	elsif ($treeitem =~/#Equipment#/) {#print "laun";
 		if($treeitem =~/#(NPC[0-9]*)#/)
