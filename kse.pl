@@ -2271,8 +2271,11 @@ sub SpawnWidgets{
 	my ($ifo_gff,$res_gff,$pty_gff,$inv_gff);
 
 	my $gameversion=(split /#/,$treeitem)[1];
+	my $savegamedir=(split /#/,$treeitem)[2];
 	my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
 	my $datahash=$tree->entrycget($root,-data);
+
+	my $treeDepth=scalar (split /#/,$treeitem);
 
 	$pty_gff=$datahash->{'GFF-pty'};
 	$res_gff=$datahash->{'GFF-res'};
@@ -2368,8 +2371,10 @@ sub SpawnWidgets{
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
 	}
-	elsif ($treeitem =~/#Area#Placeables#/){
+	elsif ($treeitem =~/#Area#Placeables#/ && $treeDepth < 7){
 		# TODO: create a loop to find which placeable is selected
+		my $gff_git = GetLastModuleGitGFF($gameversion, $savegamedir);
+		SpawnAddInventoryWidgets($treeitem,\$gff_git); # will check if the selected treeitem is a placeable inside!
 	}
 	elsif ($treeitem =~/#Equipment#/) {#print "laun";
 		if($treeitem =~/#(NPC[0-9]*)#/)
@@ -4772,14 +4777,19 @@ sub SpawnAddInventoryWidgets {
 		elsif ($gameversion==4) {%master_item_list=%master_item_list3}
 	}
 
-
-
 	my @templates;
 	my @treeitem_children=$tree->info('children',$treeitem);
 	my %possessed;
 	for my $treeitem_child (@treeitem_children) {
-		$treeitem_child =~ /Inventory#(.*)__/;
-		$possessed{$1}=1;
+		if ($treeitem =~/#Area#Placeables#/){
+			$treeitem_child =~ /#Area#Placeables#(.*)__/;
+			my $treeitem_child_name=substr((split /#/,$treeitem_child)[-1],2); # TODO: treat the case when the prefix id is greater than 9 (2 digits)
+			$possessed{$treeitem_child_name}=1;
+		}
+		else{
+			$treeitem_child =~ /Inventory#(.*)__/;
+			$possessed{$1}=1;
+		}
 	}
 
 	for my $key (sort keys %master_item_list) {
@@ -5712,7 +5722,6 @@ sub GetListOfPlaceablesFromGitGFF {
 				$i_item++;
 			}
 		}
-
 
 		$i_placeable++;
 	}
