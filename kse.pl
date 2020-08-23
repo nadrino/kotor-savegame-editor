@@ -2185,6 +2185,7 @@ sub Populate_Placeables{
 	my $treeitem=shift;
 	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
 	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
+	my $registered_path=GetRegisteredPath($gameversion);
 
 	my $gff_git = GetLastModuleGitGFF($gameversion,$savegamedir);
 	
@@ -2198,7 +2199,7 @@ sub Populate_Placeables{
 	foreach(@$git_placeablelist)
 	{
 		my $itemlist = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('ItemList')]{Value};
-		if(scalar @$itemlist){
+		if(scalar @$itemlist){ # if the itemList is not empty
 			my $ref = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('Tag')]{Value};
 			print $i_placeable." -> ".$ref."\n";
 			# push @placeable_tags_list, $i_placeable."_".$ref;
@@ -2210,41 +2211,30 @@ sub Populate_Placeables{
 
 			my $i_item=0;
 			foreach(@$itemlist){
-				my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-				print $i_placeable."   -> ".$item."\n";
-				$tree->add(
-					$treeitem."#".$i_placeable."_".$ref."#".$i_item."_".$item,
-					-text=>$item,
-					-data=>'can modify'
-				);
+				# my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
+
+				my $strref=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+				# print "-> strref = ".$strref."\n";
+				my $item_name;
+				if ($strref==-1) {
+					$item_name=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
+				else {
+					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
+				}
+
+				my $tag = lc $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
+				my $stack = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('StackSize')]{Value};
+				my $prettyItem=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
+
+				print $prettyItem."\n";
+				$tree->add($treeitem."#".$i_placeable."_".$ref."#".$tag, -text=>$prettyItem, -data=>'can modify');
+				$tree->hide('entry',$treeitem."#".$i_placeable."_".$ref."#".$tag);
 				$i_item++;
 			}
 		}
 
 		$i_placeable++;
 	}
-
-	# my @items;
-	# for my $item_struct (@$itemlist) {
-	# 	my $strref=$item_struct->{Fields}[$item_struct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
-	# 	my $item_name;
-	# 	if ($strref==-1) {
-	# 		$item_name=$item_struct->{Fields}[$item_struct->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
-	# 	else {
-	# 		$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
-	# 	}
-	# 	my $tag=lc $item_struct->{Fields}[$item_struct->get_field_ix_by_label('Tag')]{Value};
-	# 	my $stack=$item_struct->{Fields}[$item_struct->get_field_ix_by_label('StackSize')]{Value};
-	# 	my $pretty_item=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
-	# 	push @items,$pretty_item;
-	# }
-	# my $i=0;
-	# for my $item (sort @items) {
-	# 	my $tag=(split / /,$item)[0];
-	# 	$tree->add($treeitem."#$tag"."__$i",-text=>$item,-data=>'can modify');#-font=>['Courier New','8']);
-	# 	$i++;
-	# }
-	# $tree->entryconfigure($treeitem,-data=>'can modify');
 
 	$tree->autosetmode();
 }
@@ -4781,9 +4771,9 @@ sub SpawnAddInventoryWidgets {
 	my @treeitem_children=$tree->info('children',$treeitem);
 	my %possessed;
 	for my $treeitem_child (@treeitem_children) {
-		if ($treeitem =~/#Area#Placeables#/){
+		if ( $treeitem =~/#Area#Placeables#/ ){
 			$treeitem_child =~ /#Area#Placeables#(.*)__/;
-			my $treeitem_child_name=substr((split /#/,$treeitem_child)[-1],2); # TODO: treat the case when the prefix id is greater than 9 (2 digits)
+			my $treeitem_child_name=(split /#/,$treeitem_child)[-1];
 			$possessed{$treeitem_child_name}=1;
 		}
 		else{
@@ -4910,8 +4900,12 @@ sub SpawnAddInventoryWidgets {
 
 	$numhere->bind('<Return>'=>sub {
 		my @selected_indices=$templatelist->info('selection');
-		return unless (scalar @selected_indices); #nothing selected
+		return unless (scalar @selected_indices); # nothing selected
 		for my $selected_index (@selected_indices) {
+
+			# Adding the selected item
+
+			# Get the .uti gff file which contains all infos about the item
 			next if $selected_index==0;
 			my $thisstyle=$templatelist->entrycget($selected_index,-style);   #check the style
 			if ($thisstyle) {                                                 # to see if it is already possessed
@@ -4932,13 +4926,26 @@ sub SpawnAddInventoryWidgets {
 
 
 
+			# Gathering infos about the selected item
+
+
+			my $itemlist_struct;
+			if( $treeitem =~/#Area#Placeables#/ ){
+				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>9);
+
+				push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+			}
+			else{
+				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>0);
+			}
+
 			#create new struct in inventory item list based on uti fields
 			#            our $itemlist_struct;
 			#		$num_to_add += 0;
 			#		my $i;
 			#		for($i = 0,$i<=$num_to_add,$i++)
 			#		{
-			my $itemlist_struct=Bioware::GFF::Struct->new('ID'=>0);
+
 			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('BaseItem')]);
 			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Tag')]);
 			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'Identified','Value'=>1);
@@ -4987,7 +4994,16 @@ sub SpawnAddInventoryWidgets {
 			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NewItem','Value'=>1);
 			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'DELETING','Value'=>0);
 
-			push @{$$inv_gff_ref->{Main}{Fields}{Value}}, $itemlist_struct;
+
+			# Adding the item info to the inv gff file
+
+			if( $treeitem =~/#Area#Placeables#/ ){
+				# TODO: add item to gff inv of the selected placeable
+			}
+			else{
+				push @{$$inv_gff_ref->{Main}{Fields}{Value}}, $itemlist_struct;
+			}
+
 			#		}
 
 			# update tree as per Populate Inventory sub
