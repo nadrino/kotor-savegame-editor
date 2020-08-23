@@ -754,6 +754,7 @@ sub What {  #called by BrowseCmd
 			if ($#levels == 3) {
 				if    ($levels[2] eq 'NPCs')      { Populate_NPC($parm1) }
 				elsif ($levels[3] eq 'Placeables') { Populate_Placeables($parm1) }
+				elsif ($levels[3] eq 'Stores') { Populate_Stores($parm1) }
 			}
 		}
 	}
@@ -2267,6 +2268,70 @@ sub Populate_Placeables{
 		}
 
 		$i_placeable++;
+	}
+
+	$tree->autosetmode();
+}
+
+#>>>>>>>>>>>>>>>>>>>>
+sub Populate_Stores{
+	#>>>>>>>>>>>>>>>>>>>>
+	print "Populate_Stores...\n";
+
+	# Pulling game version and gamedir (which savegame)
+	my $treeitem=shift;
+	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
+	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
+	my $registered_path=GetRegisteredPath($gameversion);
+
+	my $root='#'.$gameversion.'#'.$savegamedir;
+	my $datahash=$tree->entrycget($root,-data);
+	my $git_gff = $datahash->{'GFF-git'};
+
+	# Looking for placeable with an inventory
+	my $storeList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+	my $nbStores = scalar @$storeList;
+	print "Number of stores in current module: ".$nbStores."\n";
+	my $iStore = 0;
+	# my @placeable_tags_list;
+	foreach(@$storeList)
+	{
+		my $itemlist = $storeList->[$iStore]{Fields}[$storeList->[$iStore]->get_field_ix_by_label('ItemList')]{Value};
+		if(scalar @$itemlist){ # if the itemList is not empty
+			my $ref = $storeList->[$iStore]{Fields}[$storeList->[$iStore]->get_field_ix_by_label('Tag')]{Value};
+			print $iStore." -> ".$ref."\n";
+			# push @placeable_tags_list, $i_placeable."_".$ref;
+			$tree->add(
+				$treeitem."#".$iStore."_".$ref,
+				-text=>$ref,
+				-data=>'can modify'
+			);
+
+			my $i_item=0;
+			foreach(@$itemlist){
+				# my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
+
+				my $strref=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+				# print "-> strref = ".$strref."\n";
+				my $item_name;
+				if ($strref==-1) {
+					$item_name=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
+				else {
+					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
+				}
+
+				my $tag = lc $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
+				my $stack = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('StackSize')]{Value};
+				my $prettyItem=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
+
+				print $prettyItem."\n";
+				$tree->add($treeitem."#".$iStore."_".$ref."#".$tag, -text=>$prettyItem, -data=>'can modify');
+				$tree->hide('entry',$treeitem."#".$iStore."_".$ref."#".$tag);
+				$i_item++;
+			}
+		}
+
+		$iStore++;
 	}
 
 	$tree->autosetmode();
