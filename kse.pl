@@ -4651,6 +4651,7 @@ sub SpawnDoorWidgets {
 	my $gameversion=(split /#/,$treeitem)[1];
 	my $savegamedir=(split /#/,$treeitem)[2];
 	my $doorTreeName=(split /#/,$treeitem)[-1];
+	my $doorName;
 
 	my $root='#'.$gameversion.'#'.$savegamedir;
 	my $datahash=$tree->entrycget($root,-data);
@@ -4664,45 +4665,50 @@ sub SpawnDoorWidgets {
 		my $ref = $doorsList->[$iDoor]{Fields}[$doorsList->[$iDoor]->get_field_ix_by_label('Tag')]{Value};
 		if($iDoor."_".$ref == $doorTreeName){
 			$selectedDoorId = $iDoor;
+			$doorName = $ref;
 		}
 		$iDoor++;
 	}
 
 	# Building UI
-	my $labelDoorName=$mw->Label(-text=>$doorTreeName,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>100/$y,-anchor=>'sw');
+	my $labelDoorName=$mw->Label(-text=>"Selected door: ".$doorName,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>70/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelDoorName;
 
 
 	## X Position
-	my $labelXPosition=$mw->Label(-text=>'X Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>130/$y,-anchor=>'sw');
+	my $labelXPosition=$mw->Label(-text=>'X Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>100/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelXPosition;
 	my $xPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('X')]{Value};
-	my $boxXPosition=$mw->Label(-text=>$xPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>130/$y,-anchor=>'sw');
+	my $boxXPosition=$mw->Label(-text=>$xPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>100/$y,-anchor=>'sw');
 	push @spawned_widgets,$boxXPosition;
 
 	## Y Position
-	my $labelYPosition=$mw->Label(-text=>'Y Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>160/$y,-anchor=>'sw');
+	my $labelYPosition=$mw->Label(-text=>'Y Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>125/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelYPosition;
 	my $yPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Y')]{Value};
-	my $boxYPosition=$mw->Label(-text=>$yPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>160/$y,-anchor=>'sw');
+	my $boxYPosition=$mw->Label(-text=>$yPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>125/$y,-anchor=>'sw');
 	push @spawned_widgets,$boxYPosition;
 
 	## Z Position
-	my $labelZPosition=$mw->Label(-text=>'Z Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>190/$y,-anchor=>'sw');
+	my $labelZPosition=$mw->Label(-text=>'Z Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>150/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelZPosition;
 	my $zPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Z')]{Value};
-	my $boxZPosition=$mw->Label(-text=>$zPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>190/$y,-anchor=>'sw');
+	my $boxZPosition=$mw->Label(-text=>$zPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>150/$y,-anchor=>'sw');
 	push @spawned_widgets,$boxZPosition;
 
 	## OpenState
-	my $labelOpenState=$mw->Label(-text=>'OpenState: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>210/$y,-anchor=>'sw');
+	my $labelOpenState=$mw->Label(-text=>'OpenState: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>175/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelOpenState;
 	my $openState = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value};
-	my $boxOpenState=$mw->Entry(-textvariable=>\$openState,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>210/$y,-anchor=>'sw');
+	my $boxOpenState=$mw->Entry(-textvariable=>\$openState,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>175/$y,-anchor=>'sw');
 	push @spawned_widgets,$boxOpenState;
 
-
-
+	## Locked
+	my $labelLocked=$mw->Label(-text=>'Locked: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>200/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelLocked;
+	my $locked = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value};
+	my $boxLocked=$mw->Entry(-textvariable=>\$locked,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>200/$y,-anchor=>'sw');
+	push @spawned_widgets,$boxLocked;
 
 
 	# Building Buttons
@@ -4716,8 +4722,20 @@ sub SpawnDoorWidgets {
 			else{
 				$openState = 0;
 			}
-			print "Updating OpenState value to: ".$openState."\n";
+			print "Updating ".$doorName." OpenState value to: ".$openState."\n";
 			$doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value}=$openState;
+		}
+
+		if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value} != $locked){
+			# Sanity check
+			if($locked > 0){
+				$locked = 1;
+			}
+			else{
+				$locked = 0;
+			}
+			print "Updating ".$doorName." Locked value to: ".$locked."\n";
+			$doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value}=$locked;
 		}
 
 	})->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
