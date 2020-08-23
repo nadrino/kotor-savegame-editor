@@ -173,7 +173,7 @@ our $btn_add10;
 our $btn_sub;
 our $btn_sub5;
 our $btn_sub10;
-our $btn_com;
+our $btnCommit;
 
 our $parm1;
 our @levels;
@@ -648,7 +648,7 @@ sub What {  #called by BrowseCmd
 	if(Exists($btn_sub))   {$btn_sub->destroy;}
 	if(Exists($btn_sub5))  {$btn_sub5->destroy;}
 	if(Exists($btn_sub10)) {$btn_sub10->destroy;}
-	if(Exists($btn_com))   {$btn_com->destroy;}
+	if(Exists($btnCommit))   {$btnCommit->destroy;}
 
 	$parm1=shift;
 	my $gv;
@@ -2496,6 +2496,9 @@ sub SpawnWidgets{
 		SpawnAddInventoryWidgets($treeitem,\$inv_gff); }
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
+	}
+	elsif ($treeitem =~/#Area#Doors#/) {
+		SpawnDoorWidgets($treeitem,\$git_gff);
 	}
 	elsif ($treeitem =~/#Area#Placeables#/ || $treeitem =~/#Area#Stores#/){
 		if($treeDepth < 7){
@@ -4642,7 +4645,58 @@ sub SpawnSoundsetWidgets {
 
 }
 
+sub SpawnDoorWidgets {
+	print "SpawnDoorWidgets...\n";
+	my ($treeitem,$inv_gff_ref)=@_;
+	my $gameversion=(split /#/,$treeitem)[1];
+	my $savegamedir=(split /#/,$treeitem)[2];
+	my $doorTreeName=(split /#/,$treeitem)[-1];
 
+	my $root='#'.$gameversion.'#'.$savegamedir;
+	my $datahash=$tree->entrycget($root,-data);
+	my $git_gff = $datahash->{'GFF-git'};
+
+	# Looking for the door
+	my $doorsList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
+	my $iDoor = 0;
+	my $selectedDoorId;
+	foreach(@$doorsList) {
+		my $ref = $doorsList->[$iDoor]{Fields}[$doorsList->[$iDoor]->get_field_ix_by_label('Tag')]{Value};
+		if($iDoor."_".$ref == $doorTreeName){
+			$selectedDoorId = $iDoor;
+		}
+		$iDoor++;
+	}
+
+	# Building UI
+	my $labelDoorName=$mw->Label(-text=>$doorTreeName,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>200/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelDoorName;
+
+	my $labelOpenState=$mw->Label(-text=>'OpenState: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>230/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelOpenState;
+
+	my $openState = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value};
+	my $boxOpenState=$mw->Entry(-textvariable=>\$openState,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>230/$y,-anchor=>'sw');
+	push @spawned_widgets,$boxOpenState;
+
+
+	# Building Buttons
+	my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
+
+		if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value} != $openState){
+			print "Updating OpenState value to: ".$openState."\n";
+			$doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value}=$openState;
+		}
+
+	})->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
+	push @spawned_widgets,$btnApply;
+
+	$btnCommit=$mw->Button(-text=>"Commit Changes",
+		-command=>sub {
+			CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+	push @spawned_widgets,$btnCommit;
+
+}
 
 #>>>>>>>>>>>>>>>>>>>>>>>
 sub Populate_Inventory {
@@ -4946,10 +5000,11 @@ sub SpawnInventoryWidgets {
 	})->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
 	push @spawned_widgets,$btn1;
 
-	$btn_com=$mw->Button(-text=>"Commit Changes",
+	$btnCommit=$mw->Button(-text=>"Commit Changes",
 		-command=>sub {
 			CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
-	push @spawned_widgets,$btn2;
+	# push @spawned_widgets,$btn2;
+	push @spawned_widgets,$btnCommit;
 }
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
