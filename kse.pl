@@ -4715,6 +4715,7 @@ sub SpawnDoorWidgets {
 	my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
 
 		if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value} != $openState){
+			$openState += 0;
 			# Sanity check
 			if($openState > 0){
 				$openState = 1;
@@ -4727,6 +4728,7 @@ sub SpawnDoorWidgets {
 		}
 
 		if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value} != $locked){
+			$locked += 0;
 			# Sanity check
 			if($locked > 0){
 				$locked = 1;
