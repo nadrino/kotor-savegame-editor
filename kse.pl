@@ -4646,7 +4646,7 @@ sub SpawnSoundsetWidgets {
 }
 
 sub SpawnDoorWidgets {
-	print "SpawnDoorWidgets...\n";
+
 	my ($treeitem,$inv_gff_ref)=@_;
 	my $gameversion=(split /#/,$treeitem)[1];
 	my $savegamedir=(split /#/,$treeitem)[2];
@@ -4669,21 +4669,53 @@ sub SpawnDoorWidgets {
 	}
 
 	# Building UI
-	my $labelDoorName=$mw->Label(-text=>$doorTreeName,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>200/$y,-anchor=>'sw');
+	my $labelDoorName=$mw->Label(-text=>$doorTreeName,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>100/$y,-anchor=>'sw');
 	push @spawned_widgets,$labelDoorName;
 
-	my $labelOpenState=$mw->Label(-text=>'OpenState: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>230/$y,-anchor=>'sw');
-	push @spawned_widgets,$labelOpenState;
 
+	## X Position
+	my $labelXPosition=$mw->Label(-text=>'X Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>130/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelXPosition;
+	my $xPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('X')]{Value};
+	my $boxXPosition=$mw->Label(-text=>$xPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>130/$y,-anchor=>'sw');
+	push @spawned_widgets,$boxXPosition;
+
+	## Y Position
+	my $labelYPosition=$mw->Label(-text=>'Y Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>160/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelYPosition;
+	my $yPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Y')]{Value};
+	my $boxYPosition=$mw->Label(-text=>$yPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>160/$y,-anchor=>'sw');
+	push @spawned_widgets,$boxYPosition;
+
+	## Z Position
+	my $labelZPosition=$mw->Label(-text=>'Z Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>190/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelZPosition;
+	my $zPosition = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Z')]{Value};
+	my $boxZPosition=$mw->Label(-text=>$zPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>782/$x,-rely=>190/$y,-anchor=>'sw');
+	push @spawned_widgets,$boxZPosition;
+
+	## OpenState
+	my $labelOpenState=$mw->Label(-text=>'OpenState: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>210/$y,-anchor=>'sw');
+	push @spawned_widgets,$labelOpenState;
 	my $openState = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value};
-	my $boxOpenState=$mw->Entry(-textvariable=>\$openState,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>230/$y,-anchor=>'sw');
+	my $boxOpenState=$mw->Entry(-textvariable=>\$openState,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>210/$y,-anchor=>'sw');
 	push @spawned_widgets,$boxOpenState;
+
+
+
 
 
 	# Building Buttons
 	my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
 
 		if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value} != $openState){
+			# Sanity check
+			if($openState > 0){
+				$openState = 1;
+			}
+			else{
+				$openState = 0;
+			}
 			print "Updating OpenState value to: ".$openState."\n";
 			$doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value}=$openState;
 		}
