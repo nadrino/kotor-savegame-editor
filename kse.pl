@@ -1273,11 +1273,22 @@ sub Populate_Level1 {
 		%soundset_hash=%soundset_hash3;
 		%standard_npcs=%tjm_npcs;
 	}
+
+
+
+	LoadData($treeitem);
+	my $root='#'.(split /#/,$treeitem)[1].'#'.(split /#/,$treeitem)[2];
+	my $datahash=$tree->entrycget($root,-data);
+	my $erf=$datahash->{'ERF-sav'};
+	my $erfLastModSav=$datahash->{'ERF-mod'};
+	my $gff_LastModIfo=$datahash->{'GFF-ifo'};
+	my $pty_gff=$datahash->{'GFF-pty'};
+	my $res_gff=$datahash->{'GFF-res'};
+	my $gff_inv=$datahash->{'GFF-inv'};
+	my $gff_LastModGit=$datahash->{'GFF-git'};
+	# my $gbl_gff=$tree->entrycget("$root#Globals",-data);
+
 	#read the SAVENFO.RES file
-	my $res_gff=Bioware::GFF->new();
-	unless (my $tmp=$res_gff->read_gff_file("$registered_path\\$gamedir\\savenfo.res")) {
-		die ("Could not read $registered_path\\$gamedir\\savenfo.res");
-	}
 	my $time_played=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value};
 	my $area_name=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('AREANAME')]{Value};
 	my $save_game_name=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('SAVEGAMENAME')]{Value};
@@ -1285,10 +1296,6 @@ sub Populate_Level1 {
 	my $cheat=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('CHEATUSED')]{Value};
 
 	#read the PARTYTABLE.RES file
-	my $pty_gff=Bioware::GFF->new();
-	unless (my $tmp=$pty_gff->read_gff_file("$registered_path\\$gamedir\\partytable.res")) {
-		die ("Could not read $registered_path\\$gamedir\\partytable.res");
-	}
 	my $credits=$pty_gff->{Main}{Fields}[$pty_gff->{Main}->get_field_ix_by_label('PT_GOLD')]{Value};
 	my $partyxp=$pty_gff->{Main}{Fields}[$pty_gff->{Main}->get_field_ix_by_label('PT_XP_POOL')]{Value};
 	my $pty_cheat=$pty_gff->{Main}{Fields}[$pty_gff->{Main}->get_field_ix_by_label('PT_CHEAT_USED')]{Value};
@@ -1322,61 +1329,8 @@ sub Populate_Level1 {
 	my $avail_npcs_ref=\@avail_npcs;
 
 
-	#read the SAVEGAME.SAV file
 
-	my $erf=Bioware::ERF->new();                                            		        #create ERF for savegame.sav
-	#read savegame.sav structure
-	unless (my $tmp=$erf->read_erf("$registered_path\\$gamedir\\savegame.sav")) {
-		die "Could not read $registered_path\\$gamedir\\savegame.sav";
-	}
-	my $tmpfil_inv;
-	unless ($tmpfil_inv=$erf->export_resource_to_temp_file("INVENTORY.res")) {                  #export inventory.res as a temp file
-		die "Could not find INVENTORY.res inside of $registered_path\\$gamedir\\savegame.sav";
-	}
-	my $gff_inv=Bioware::GFF->new();                                                            #create GFF for inventory.res
-	unless (my $tmp=$gff_inv->read_gff_file($tmpfil_inv->{'fn'})) {                             #read invenotry.res into GFF
-		die "Could not read from temp file containing INVENTORY.res";
-	}
-	my $tmpFileLastModSav;
-	unless ($tmpFileLastModSav=$erf->export_resource_to_temp_file("$lastModuleName.sav")) {               #export the last module as a temp file
-		die "Could not find $lastModuleName.sav inside of $registered_path\\$gamedir\\savegame.sav";
-	}
 
-	my $erfLastModSav=Bioware::ERF->new();                                                               #create ERF for last module
-	unless (my $tmp=$erfLastModSav->read_erf($tmpFileLastModSav->{'fn'})) {                                     #read last module structure
-		die "Could not read from temp file containing $lastModuleName.sav";
-	}
-	$erfLastModSav->{'tmpfil'}=$tmpFileLastModSav;                                                              #tuck the temp file into the erf for safekeeping
-	$erfLastModSav->{'modulename'}="$lastModuleName.sav";                                                   #tuck the module name into the erf for safekeeping
-
-	my $tmpfil_LastModIfo;
-	unless($tmpfil_LastModIfo=$erfLastModSav->export_resource_to_temp_file("module.ifo")) {                     #export the module.ifo file as a temp file
-		die "Could not find module.ifo inside of $lastModuleName.sav";
-	}
-	my $gff_LastModIfo=Bioware::GFF->new();                                                            #create GFF for module.ifo
-	unless (my $tmp=$gff_LastModIfo->read_gff_file($tmpfil_LastModIfo->{'fn'})) {                             #read module.ifo into GFF
-		die "Could not read from temp file containing module.ifo";
-	}
-
-	# Looking for last module .git file where the inventory of all placeable is stored
-	my $lastModuleGitName;
-	for my $resource (@{$erfLastModSav->{'resources'}}) {
-		if($resource->{'res_ext'} eq "git") {
-			$lastModuleGitName = lc $resource->{'res_ref'};
-		}
-	}
-
-	# Extracting the .git file as a temp file
-	my $tmpfil_git;
-	unless($tmpfil_git=$erfLastModSav->export_resource_to_temp_file("$lastModuleGitName.git")) {
-		die "Could not find $lastModuleGitName.git inside of $lastModuleName.sav";
-	}
-
-	# Parsing the .git temp file
-	my $gff_LastModGit=Bioware::GFF->new();                                                            #create GFF for module.ifo
-	unless (my $tmp=$gff_LastModGit->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
-		die "Could not read from .git temp file";
-	}
 
 	my $mod_playerlist=$gff_LastModIfo->{Main}{Fields}[$gff_LastModIfo->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
 
@@ -1534,18 +1488,6 @@ sub Populate_Level1 {
 		$tree->add($treeitem."#Equipment#LWeapon2",-text=>"Left Weapon 2:\t$lweapon2");   $tree->hide('entry', $treeitem."#Equipment#LWeapon2");
 	}
 
-	$tree->entryconfigure(
-		$treeitem,
-		-data=>{
-			'ERF-sav'=>$erf,
-			'ERF-mod'=>$erfLastModSav,
-			'GFF-pty'=>$pty_gff,
-			'GFF-res'=>$res_gff,
-			'GFF-ifo'=>$gff_LastModIfo,
-			'GFF-git'=>$gff_LastModGit,
-			'GFF-inv'=>$gff_inv
-		}
-	);
 	$tree->autosetmode();
 
 }
@@ -2541,6 +2483,8 @@ sub SpawnWidgets{
 		}
 	}
 }
+
+
 #>>>>>>>>>>>>>>>>>>>
 sub CommitChanges {
 	#>>>>>>>>>>>>>>>>>>>
@@ -2584,6 +2528,7 @@ sub CommitChanges {
 		$registered_path=$path{tjm} . "/saves";
 	}
 
+	my $gamedir=(split /#/,$treeitem)[2];
 
 	# retrieve all of our files except NPC .utc
 	my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
@@ -2598,7 +2543,6 @@ sub CommitChanges {
 	my $gbl_gff=$tree->entrycget("$root#Globals",-data);
 	#$mw->Busy(-recurse=>1); #BUG ? -> when commiting while the scrolling windows is not up
 
-	my $gamedir=(split /#/,$treeitem)[2];
 	LogIt ("Committing changes for $gv->$gm");
 
 	# write PARTYTABLE.res
@@ -2622,21 +2566,15 @@ sub CommitChanges {
 	}
 
 	# write Module.ifo to tempfile
-	my $tmpfil=Win32API::File::Temp->new();
-	unless (my $tmp=$ifo_gff->write_gff_file($tmpfil->{'fn'})) {
+	my $tmpFile_ModuleIfoGff=Win32API::File::Temp->new();
+	unless (my $tmp=$ifo_gff->write_gff_file($tmpFile_ModuleIfoGff->{'fn'})) {
 		die "Could not write module.ifo to temp file.";
 	}
 
 	# write last module git to tempfile
-	my $tmpfil_git=Win32API::File::Temp->new();
-	unless (my $tmp=$git_gff->write_gff_file($tmpfil_git->{'fn'})) {
+	my $tmpFile_LastModuleGitGff=Win32API::File::Temp->new();
+	unless (my $tmp=$git_gff->write_gff_file($tmpFile_LastModuleGitGff->{'fn'})) {
 		die "Could not write module.ifo to temp file.";
-	}
-
-	# write INVENTORY.res to tempfile
-	my $tmpfil_inv=Win32API::File::Temp->new();
-	unless (my $tmp=$inv_gff->write_gff_file($tmpfil_inv->{'fn'})) {
-		die "Could not write INVENTORY.res to temp file.";
 	}
 
 	# populate the erf_mod with its original data
@@ -2644,22 +2582,29 @@ sub CommitChanges {
 		die "Failed to read in last module of savegame.";
 	}
 
+
 	# insert into erf_mod the new module.ifo file
-	unless (my $tmp=$erf_mod->import_resource($tmpfil->{'fn'},'Module.ifo')) {
+	unless (my $tmp=$erf_mod->import_resource($tmpFile_ModuleIfoGff->{'fn'},'Module.ifo')) {
 		die "Failed to import Module.ifo into last module of savegame";
 	}
 
 	# insert into erf_mod the new lastModule.git file
-	my $lastModuleGitName = GetLastModuleGitName($gameversion, $gamedir);
-	unless (my $tmp=$erf_mod->import_resource($tmpfil_git->{'fn'}, $lastModuleGitName.'.git')) {
-		die "Failed to import ".$lastModuleGitName.".git into last module of savegame";
+	print "lastModuleGitName = ".$git_gff->{'modulename'}."\n";
+	unless (my $tmp=$erf_mod->import_resource($tmpFile_LastModuleGitGff->{'fn'}, $git_gff->{'modulename'}.'.git')) {
+		die "Failed to import ".$git_gff->{'modulename'}.".git into last module of savegame";
+	}
+
+	# write the erf_mod to tempfile
+	my $tmpFile_LastModuleSavErf=Win32API::File::Temp->new();
+	unless (my $tmp=$erf_mod->write_erf($tmpFile_LastModuleSavErf->{'fn'})) {
+		die "Failed to write last module to temp file.";
 	}
 
 
-	# write the erf_mod to tempfile
-	my $tmpfil2=Win32API::File::Temp->new();
-	unless (my $tmp=$erf_mod->write_erf($tmpfil2->{'fn'})) {
-		die "Failed to write last module to temp file.";
+	# write INVENTORY.res to tempfile
+	my $tmpfil_inv=Win32API::File::Temp->new();
+	unless (my $tmp=$inv_gff->write_gff_file($tmpfil_inv->{'fn'})) {
+		die "Could not write INVENTORY.res to temp file.";
 	}
 
 	# load the original erf_sav
@@ -2668,7 +2613,7 @@ sub CommitChanges {
 	}
 
 	# insert into erf_sav the new erf_mod file
-	unless (my $tmp=$erf_sav->import_resource($tmpfil2->{'fn'},$erf_mod->{'modulename'})) {
+	unless (my $tmp=$erf_sav->import_resource($tmpFile_LastModuleSavErf->{'fn'},$erf_mod->{'modulename'}.".sav")) {
 		die "Failed to import last module of savegame into main savegame data.";
 	}
 
@@ -2804,10 +2749,40 @@ sub CommitChanges {
 	}
 
 
+	print "RELOADING DATA\n";
+	LoadData($treeitem);
+
+	# # Reload
+	# # Looking for last module .git file where the inventory of all placeable is stored
+	# my $lastModuleGitName;
+	# for my $resource (@{$erf_mod->{'resources'}}) {
+	# 	if($resource->{'res_ext'} eq "git") {
+	# 		$lastModuleGitName = lc $resource->{'res_ref'};
+	# 	}
+	# }
+	#
+	# # Extracting the .git file as a temp file
+	# my $tmpfil_git;
+	# unless($tmpfil_git=$erf_mod->export_resource_to_temp_file("$lastModuleGitName.git")) {
+	# 	die "Could not find $lastModuleGitName.git inside of $lastModuleName.sav";
+	# }
+	#
+	# # Parsing the .git temp file
+	# my $gff_LastModGit=Bioware::GFF->new();                                                            #create GFF for module.ifo
+	# unless (my $tmp=$gff_LastModGit->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
+	# 	die "Could not read from .git temp file";
+	# }
+	# $gff_LastModGit->{'modulename'}="$lastModuleGitName";
+	# $datahash->{'GFF-git'}=$gff_LastModGit;
+
 	$mw->Unbusy;
 
 	$mw->Dialog(-title=>'Save Successful',-text=>"File $registered_path\\$gamedir\\savegame.sav saved successfully.",-font=>['MS Sans Serif','8'],-buttons=>['Ok'])->Show();
+	# exec($^X, $0, @ARGV);
 }
+
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>
 sub SpawnFeatWidgets {
 	#>>>>>>>>>>>>>>>>>>>>>>>>
@@ -6058,6 +6033,7 @@ sub RWhat {
 
 }
 
+
 # Generic functions
 sub GetRegisteredPath {
 	my $gameversion = shift;
@@ -6082,64 +6058,137 @@ sub GetRegisteredPath {
 
 	return $registered_path
 }
-sub GetLastModuleGitName {
-	my $gameversion = shift;
-	my $savegamedir = shift;
+sub LoadData {
+	print "Loading data...\n";
 
-	my $root='#'.$gameversion.'#'.$savegamedir;
-	my $datahash=$tree->entrycget($root,-data);
-	my $erf_mod=$datahash->{'ERF-mod'};
+	my $treeitem=shift;
+	my $root='#'.(split /#/,$treeitem)[1].'#'.(split /#/,$treeitem)[2];
+	my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
+	my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
+	my $registered_path;
+	if ($gameversion==1) {
+		$registered_path=$path{kotor} . "/saves";
+		%genders=%gender_hash1;
+		%appearance_hash=%appearance_hash1;
+		%portraits_hash=%portraits_hash1;
+		%soundset_hash=%soundset_hash1;
+		%standard_npcs=%standard_kotor_npcs;
+	}
+	elsif ($gameversion==2) {
+		$registered_path=$path{tsl_save};
+		%genders=%gender_hash2;
+		%appearance_hash=%appearance_hash2;
+		%portraits_hash=%portraits_hash2;
+		%soundset_hash=%soundset_hash2;
+		%standard_npcs=%standard_tsl_npcs;
+	}
+	elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+		$registered_path=$path{tjm} . "/saves";
+		%genders=%gender_hash3;
+		%appearance_hash=%appearance_hash3;
+		%portraits_hash=%portraits_hash3;
+		%soundset_hash=%soundset_hash3;
+		%standard_npcs=%tjm_npcs;
+	}
+	elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+		$registered_path=$path{tsl_cloud};
+		%genders=%gender_hash2;
+		%appearance_hash=%appearance_hash2;
+		%portraits_hash=%portraits_hash2;
+		%soundset_hash=%soundset_hash2;
+		%standard_npcs=%standard_tsl_npcs;
+	}
+	elsif ($gameversion==4) {
+		$registered_path=$path{tjm} . "/saves";
+		%genders=%gender_hash3;
+		%appearance_hash=%appearance_hash3;
+		%portraits_hash=%portraits_hash3;
+		%soundset_hash=%soundset_hash3;
+		%standard_npcs=%tjm_npcs;
+	}
+
+	my $res_gff=Bioware::GFF->new();
+	unless (my $tmp=$res_gff->read_gff_file("$registered_path\\$gamedir\\savenfo.res")) {
+		die ("Could not read $registered_path\\$gamedir\\savenfo.res");
+	}
+
+	my $lastModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
+
+	my $pty_gff=Bioware::GFF->new();
+	unless (my $tmp=$pty_gff->read_gff_file("$registered_path\\$gamedir\\partytable.res")) {
+		die ("Could not read $registered_path\\$gamedir\\partytable.res");
+	}
+
+	#read the SAVEGAME.SAV file
+
+	my $erf=Bioware::ERF->new();                                            		        #create ERF for savegame.sav
+	#read savegame.sav structure
+	unless (my $tmp=$erf->read_erf("$registered_path\\$gamedir\\savegame.sav")) {
+		die "Could not read $registered_path\\$gamedir\\savegame.sav";
+	}
+	my $tmpfil_inv;
+	unless ($tmpfil_inv=$erf->export_resource_to_temp_file("INVENTORY.res")) {                  #export inventory.res as a temp file
+		die "Could not find INVENTORY.res inside of $registered_path\\$gamedir\\savegame.sav";
+	}
+	my $gff_inv=Bioware::GFF->new();                                                            #create GFF for inventory.res
+	unless (my $tmp=$gff_inv->read_gff_file($tmpfil_inv->{'fn'})) {                             #read invenotry.res into GFF
+		die "Could not read from temp file containing INVENTORY.res";
+	}
+	my $tmpFileLastModSav;
+	unless ($tmpFileLastModSav=$erf->export_resource_to_temp_file("$lastModuleName.sav")) {               #export the last module as a temp file
+		die "Could not find $lastModuleName.sav inside of $registered_path\\$gamedir\\savegame.sav";
+	}
+
+	my $erfLastModSav=Bioware::ERF->new();                                                               #create ERF for last module
+	unless (my $tmp=$erfLastModSav->read_erf($tmpFileLastModSav->{'fn'})) {                                     #read last module structure
+		die "Could not read from temp file containing $lastModuleName.sav";
+	}
+	$erfLastModSav->{'tmpfil'}=$tmpFileLastModSav;                                                              #tuck the temp file into the erf for safekeeping
+	$erfLastModSav->{'modulename'}="$lastModuleName";                                                   #tuck the module name into the erf for safekeeping
+
+	my $tmpfil_LastModIfo;
+	unless($tmpfil_LastModIfo=$erfLastModSav->export_resource_to_temp_file("module.ifo")) {                     #export the module.ifo file as a temp file
+		die "Could not find module.ifo inside of $lastModuleName.sav";
+	}
+	my $gff_LastModIfo=Bioware::GFF->new();                                                            #create GFF for module.ifo
+	unless (my $tmp=$gff_LastModIfo->read_gff_file($tmpfil_LastModIfo->{'fn'})) {                             #read module.ifo into GFF
+		die "Could not read from temp file containing module.ifo";
+	}
 
 	# Looking for last module .git file where the inventory of all placeable is stored
 	my $lastModuleGitName;
-	for my $resource (@{$erf_mod->{'resources'}}) {
+	for my $resource (@{$erfLastModSav->{'resources'}}) {
 		if($resource->{'res_ext'} eq "git") {
 			$lastModuleGitName = lc $resource->{'res_ref'};
 		}
 	}
 
-	return $lastModuleGitName;
-}
-sub GetListOfPlaceablesFromGitGFF {
-	$gff_git = shift;
-
-	# Looking for placeable with an inventory
-	my $git_placeablelist=$gff_git->{Main}{Fields}[$gff_git->{Main}->get_field_ix_by_label('Placeable List')]{Value};
-	my $len = scalar @$git_placeablelist;
-	print "Number of placeables found: ".$len."\n";
-	my $i_placeable = 0;
-	my @placeable_list;
-	foreach(@$git_placeablelist)
-	{
-		my $placeable_tag = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('Tag')]{Value};
-		push @placeable_list, $placeable_tag;
-
-		my $placeable_items_list = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('ItemList')]{Value};
-		if(scalar @$placeable_items_list){
-			# print $i_placeable." -> ".$placeable_tag."\n";
-			# $tree->add(
-			# 	$treeitem."#".$i_placeable."_".$placeable_tag,
-			# 	-text=>$placeable_tag,
-			# 	-data=>'can modify'
-			# );
-
-			my $i_item=0;
-			foreach(@$placeable_items_list){
-				my $item_tag = $placeable_items_list->[$i_item]{Fields}[$placeable_items_list->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-				# print $i_placeable."   -> ".$item."\n";
-				# $tree->add(
-				# 	$treeitem."#".$i_placeable."_".$placeable_tag."#".$i_item."_".$item,
-				# 	-text=>$item,
-				# 	-data=>'can modify'
-				# );
-				push @$placeable_list->[$i_placeable], $item_tag;
-				$i_item++;
-			}
-		}
-
-		$i_placeable++;
+	# Extracting the .git file as a temp file
+	my $tmpfil_git;
+	unless($tmpfil_git=$erfLastModSav->export_resource_to_temp_file("$lastModuleGitName.git")) {
+		die "Could not find $lastModuleGitName.git inside of $lastModuleName.sav";
 	}
-	return @placeable_list;
+
+	# Parsing the .git temp file
+	my $gff_LastModGit=Bioware::GFF->new();                                                            #create GFF for module.ifo
+	unless (my $tmp=$gff_LastModGit->read_gff_file($tmpfil_git->{'fn'})) {                             #read module.ifo into GFF
+		die "Could not read from .git temp file";
+	}
+	$gff_LastModGit->{'modulename'}="$lastModuleGitName";
+
+	$tree->entryconfigure(
+		$root,
+		-data=>{
+			'ERF-sav'=>$erf,
+			'ERF-mod'=>$erfLastModSav,
+			'GFF-pty'=>$pty_gff,
+			'GFF-res'=>$res_gff,
+			'GFF-ifo'=>$gff_LastModIfo,
+			'GFF-git'=>$gff_LastModGit,
+			'GFF-inv'=>$gff_inv
+		}
+	);
+	print "Data loaded.\n";
 }
 
 sub CopyInventory {
