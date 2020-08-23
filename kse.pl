@@ -755,6 +755,7 @@ sub What {  #called by BrowseCmd
 				if    ($levels[2] eq 'NPCs')      	{ Populate_NPC($parm1) }
 				elsif ($levels[3] eq 'Placeables') 	{ Populate_Placeables($parm1) }
 				elsif ($levels[3] eq 'Stores') 		{ Populate_Stores($parm1) }
+				elsif ($levels[3] eq 'Doors') 		{ Populate_Doors($parm1) }
 			}
 		}
 	}
@@ -2336,6 +2337,42 @@ sub Populate_Stores{
 
 	$tree->autosetmode();
 }
+
+#>>>>>>>>>>>>>>>>>>>>
+sub Populate_Doors{
+	#>>>>>>>>>>>>>>>>>>>>
+	print "Populate_Doors...\n";
+
+	# Pulling game version and gamedir (which savegame)
+	my $treeitem=shift;
+	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
+	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
+	my $registered_path=GetRegisteredPath($gameversion);
+
+	my $root='#'.$gameversion.'#'.$savegamedir;
+	my $datahash=$tree->entrycget($root,-data);
+	my $git_gff = $datahash->{'GFF-git'};
+
+	# Looking for placeable with an inventory
+	my $doorsList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
+	my $nbStores = scalar @$doorsList;
+	print "Number of stores in current module: ".$nbStores."\n";
+	my $iDoor = 0;
+	# my @placeable_tags_list;
+	foreach(@$doorsList)
+	{
+		my $ref = $doorsList->[$iDoor]{Fields}[$doorsList->[$iDoor]->get_field_ix_by_label('Tag')]{Value};
+		$tree->add(
+			$treeitem."#".$iDoor."_".$ref,
+			-text=>$ref,
+			-data=>'can modify'
+		);
+		$iDoor++;
+	}
+
+	$tree->autosetmode();
+}
+
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>
 sub SpawnWidgets{
