@@ -2395,8 +2395,13 @@ sub SpawnWidgets{
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
 	}
-	elsif ($treeitem =~/#Area#Placeables#/ && $treeDepth < 7){
-		SpawnAddInventoryWidgets($treeitem,\$git_gff); # will check if the selected treeitem is a placeable inside!
+	elsif ($treeitem =~/#Area#Placeables#/){
+		if($treeDepth < 7){
+			SpawnAddInventoryWidgets($treeitem,\$git_gff); # will check if the selected treeitem is a placeable inside!
+		}
+		else{
+			SpawnInventoryWidgets($treeitem,\$git_gff);
+		}
 	}
 	elsif ($treeitem =~/#Equipment#/) {#print "laun";
 		if($treeitem =~/#(NPC[0-9]*)#/)
@@ -2671,6 +2676,7 @@ sub CommitChanges {
 		sysread $fh,$headervardata,$self{'offset_to_resource_list'}+(8*$self{'entry_count'})-160;
 		sysread $fh,$datadata,$savegame_size;
 
+		# NOT WORKING?
 		#my $hmac_out= hmac_sha1($headerdata,$authkey);
 		#open my ($fho),">",'SAVE_HEADER.sig';
 		#binmode $fho;
@@ -2689,6 +2695,7 @@ sub CommitChanges {
 		syswrite $fho, $hmac_out;
 		close $fho;
 		LogIt ("SAVE_DATA.sig created.");
+		print ".sig files have been regenerated.\n";
 	}
 
 
@@ -4610,7 +4617,15 @@ sub SpawnInventoryWidgets {
 	#>>>>>>>>>>>>>>>>>>>>>>>>>>
 	my ($treeitem,$inv_gff_ref)=@_;
 	my $gameversion=(split /#/,$treeitem)[1];
+	my $savegamedir=(split /#/,$treeitem)[2];
 	my $curtext=$tree->entrycget($treeitem,-text);
+
+	my $selectedEntry = (split /#/,$treeitem)[-2];
+	my $subInventoryIndex = -1;
+	if($treeitem =~ /#Area#Placeables#/){
+		$subInventoryIndex = (split /_/, $selectedEntry)[0];
+	}
+
 	$curtext=~/(.*)\[(\d+)/;
 
 	my $lbl1=$mw->Label(-text=>$1,-font=>['MS Sans Serif','8'])->place(-relx=>650/$x,-rely=>200/$y,-anchor=>'sw');
@@ -4747,7 +4762,19 @@ sub SpawnInventoryWidgets {
 			my $newtext="$1\[$cur_vasl\]";
 			my $this_tag=(split / /,$curtext)[0];
 			$tree->entryconfigure($treeitem,-text=>$newtext);
-			my $itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
+
+			my $itemlist;
+			if( $treeitem =~/#Area#Placeables#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+				$itemlist = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+			}
+			else{
+				$itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
+			}
+
 			for my $item_struct (@$itemlist) {
 				my $tag=lc $item_struct->{Fields}[$item_struct->get_field_ix_by_label('Tag')]{Value};
 				if ($tag eq $this_tag) {
@@ -4759,7 +4786,17 @@ sub SpawnInventoryWidgets {
 		else {
 			my $this_tag=(split / /,$curtext)[0];
 			LogIt("Removing $this_tag from inventory");
-			my $itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
+			my $itemlist;
+			if( $treeitem =~/#Area#Placeables#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+				$itemlist = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+			}
+			else{
+				$itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
+			}
 			my @newitemlist;
 			for my $item_struct (@$itemlist) {
 				my $tag=lc $item_struct->{Fields}[$item_struct->get_field_ix_by_label('Tag')]{Value};
@@ -4767,7 +4804,16 @@ sub SpawnInventoryWidgets {
 					push @newitemlist, $item_struct;
 				}
 			}
-			$$inv_gff_ref->{Main}{Fields}{Value}=[@newitemlist];
+			if( $treeitem =~/#Area#Placeables#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+				$gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}=[@newitemlist];
+			}
+			else{
+				$$inv_gff_ref->{Main}{Fields}{Value}=[@newitemlist];
+			}
 			$tree->delete('entry',$treeitem);
 			for my $widge ($txt1, $lbl1, $lbl2) {   #unspawn old widgets
 				$widge->destroy if Tk::Exists($widge);    }
@@ -4797,7 +4843,6 @@ sub SpawnAddInventoryWidgets {
 	my $subInventoryIndex = -1;
 	if($treeitem =~ /#Area#Placeables#/){
 		$subInventoryIndex = (split /_/, $selectedEntry)[0];
-		print "subInventoryIndex = ".$subInventoryIndex."\n";
 	}
 
 	if ($gameversion==1) { %master_item_list=%master_item_list1; $registered_path=$path{kotor}; $baseitems_hash_ref=\%baseitems_hash1;}
@@ -5055,7 +5100,7 @@ sub SpawnAddInventoryWidgets {
 				my $root='#'.$gameversion.'#'.$savegamedir;
 				my $datahash=$tree->entrycget($root,-data);
 				my $git_gff = $datahash->{'GFF-git'};
-				my $gitPlaceablesList=$gff_git->{Main}{Fields}[$gff_git->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
 				my $itemList = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 				push @{$itemList}, $itemlist_struct;
 			}
