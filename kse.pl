@@ -5032,7 +5032,12 @@ sub SpawnAddInventoryWidgets {
 			if( $treeitem =~/#Area#Placeables#/ ){
 				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>9);
 
-				push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
+					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				}
+				else{
+					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>62);
+				}
 			}
 			else{
 				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>0);
@@ -5083,19 +5088,18 @@ sub SpawnAddInventoryWidgets {
 			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('AddCost')]);
 			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Plot')]);
 			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('PropertiesList')]);
+			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NonEquippable','Value'=>0);
+			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NewItem','Value'=>1);
+			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'DELETING','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'XPosition','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'YPosition','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZPosition','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'XOrientation','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'YOrientation','Value'=>0);
 			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZOrientation','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NonEquippable','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NewItem','Value'=>1);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'DELETING','Value'=>0);
 
 
 			# Adding the item info to the inv gff file
-
 			if( $treeitem =~/#Area#Placeables#/ ){
 				my $root='#'.$gameversion.'#'.$savegamedir;
 				my $datahash=$tree->entrycget($root,-data);
