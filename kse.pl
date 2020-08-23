@@ -752,9 +752,9 @@ sub What {  #called by BrowseCmd
 				elsif ($levels[2] eq 'Inventory') { Populate_Inventory($parm1) }
 			}
 			if ($#levels == 3) {
-				if    ($levels[2] eq 'NPCs')      { Populate_NPC($parm1) }
-				elsif ($levels[3] eq 'Placeables') { Populate_Placeables($parm1) }
-				elsif ($levels[3] eq 'Stores') { Populate_Stores($parm1) }
+				if    ($levels[2] eq 'NPCs')      	{ Populate_NPC($parm1) }
+				elsif ($levels[3] eq 'Placeables') 	{ Populate_Placeables($parm1) }
+				elsif ($levels[3] eq 'Stores') 		{ Populate_Stores($parm1) }
 			}
 		}
 	}
@@ -2460,7 +2460,7 @@ sub SpawnWidgets{
 	elsif ($treeitem =~/#Inventory#/) {
 		SpawnInventoryWidgets($treeitem,\$inv_gff);
 	}
-	elsif ($treeitem =~/#Area#Placeables#/){
+	elsif ($treeitem =~/#Area#Placeables#/ || $treeitem =~/#Area#Stores#/){
 		if($treeDepth < 7){
 			SpawnAddInventoryWidgets($treeitem,\$git_gff); # will check if the selected treeitem is a placeable inside!
 		}
@@ -4687,7 +4687,7 @@ sub SpawnInventoryWidgets {
 
 	my $selectedEntry = (split /#/,$treeitem)[-2];
 	my $subInventoryIndex = -1;
-	if($treeitem =~ /#Area#Placeables#/){
+	if($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Stores#/){
 		$subInventoryIndex = (split /_/, $selectedEntry)[0];
 	}
 
@@ -4836,6 +4836,13 @@ sub SpawnInventoryWidgets {
 				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
 				$itemlist = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 			}
+			elsif( $treeitem =~/#Area#Stores#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				$itemlist = $gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+			}
 			else{
 				$itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
 			}
@@ -4859,6 +4866,13 @@ sub SpawnInventoryWidgets {
 				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
 				$itemlist = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 			}
+			elsif( $treeitem =~/#Area#Stores#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				$itemlist = $gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+			}
 			else{
 				$itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
 			}
@@ -4875,6 +4889,13 @@ sub SpawnInventoryWidgets {
 				my $git_gff = $datahash->{'GFF-git'};
 				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
 				$gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}=[@newitemlist];
+			}
+			elsif( $treeitem =~/#Area#Stores#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				$gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}=[@newitemlist];
 			}
 			else{
 				$$inv_gff_ref->{Main}{Fields}{Value}=[@newitemlist];
@@ -4906,7 +4927,7 @@ sub SpawnAddInventoryWidgets {
 
 	my $selectedEntry = (split /#/,$treeitem)[-1];
 	my $subInventoryIndex = -1;
-	if($treeitem =~ /#Area#Placeables#/){
+	if($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Stores#/){
 		$subInventoryIndex = (split /_/, $selectedEntry)[0];
 	}
 
@@ -4937,6 +4958,11 @@ sub SpawnAddInventoryWidgets {
 	for my $treeitem_child (@treeitem_children) {
 		if ( $treeitem =~/#Area#Placeables#/ ){
 			$treeitem_child =~ /#Area#Placeables#(.*)__/;
+			my $treeitem_child_name=(split /#/,$treeitem_child)[-1];
+			$possessed{$treeitem_child_name}=1;
+		}
+		elsif ( $treeitem =~/#Area#Stores#/ ){
+			$treeitem_child =~ /#Area#Stores#(.*)__/;
 			my $treeitem_child_name=(split /#/,$treeitem_child)[-1];
 			$possessed{$treeitem_child_name}=1;
 		}
@@ -5091,8 +5117,6 @@ sub SpawnAddInventoryWidgets {
 
 
 			# Gathering infos about the selected item
-
-
 			my $itemlist_struct;
 			if( $treeitem =~/#Area#Placeables#/ ){
 				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>9);
@@ -5101,7 +5125,17 @@ sub SpawnAddInventoryWidgets {
 					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
 				}
 				else{
-					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>62);
+					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+				}
+			}
+			elsif ( $treeitem =~/#Area#Stores#/ ){
+				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>99); # TODO: Change the id according to the place in the list
+
+				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
+					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				}
+				else{
+					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
 				}
 			}
 			else{
@@ -5173,13 +5207,22 @@ sub SpawnAddInventoryWidgets {
 				my $itemList = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 				push @{$itemList}, $itemlist_struct;
 			}
+			elsif( $treeitem =~/#Area#Stores#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				my $itemList = $gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+				push @{$itemList}, $itemlist_struct;
+			}
 			else{
 				push @{$$inv_gff_ref->{Main}{Fields}{Value}}, $itemlist_struct;
 			}
 
 			#		}
 
-			if( $treeitem =~/#Area#Placeables#/ ){
+			# Printing the new item in the displayed list
+			if( $treeitem =~/#Area#Placeables#/ || $treeitem =~/#Area#Stores#/ ){
 				my $strref=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 				# print "-> strref = ".$strref."\n;
 				my $item_name;
@@ -5260,11 +5303,27 @@ sub SpawnAddInventoryWidgets {
 			#		my $i;
 			#		for($i = 0,$i<=$num_to_add,$i++)
 			#		{
+			# Gathering infos about the selected item
 			my $itemlist_struct;
 			if( $treeitem =~/#Area#Placeables#/ ){
 				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>9);
 
-				push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
+					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				}
+				else{
+					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+				}
+			}
+			elsif ( $treeitem =~/#Area#Stores#/ ){
+				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>99); # TODO: Change the id according to the place in the list
+
+				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
+					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				}
+				else{
+					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+				}
 			}
 			else{
 				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>0);
@@ -5325,13 +5384,21 @@ sub SpawnAddInventoryWidgets {
 				my $itemList = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 				push @{$itemList}, $itemlist_struct;
 			}
+			elsif( $treeitem =~/#Area#Stores#/ ){
+				my $root='#'.$gameversion.'#'.$savegamedir;
+				my $datahash=$tree->entrycget($root,-data);
+				my $git_gff = $datahash->{'GFF-git'};
+				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				my $itemList = $gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
+				push @{$itemList}, $itemlist_struct;
+			}
 			else{
 				push @{$$inv_gff_ref->{Main}{Fields}{Value}}, $itemlist_struct;
 			}
 			#		}
 
-			# update tree as per Populate Inventory sub
-			if( $treeitem =~/#Area#Placeables#/ ){
+			# Printing the new item in the displayed list
+			if( $treeitem =~/#Area#Placeables#/ || $treeitem =~/#Area#Stores#/ ){
 				my $strref=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 				# print "-> strref = ".$strref."\n;
 				my $item_name;
