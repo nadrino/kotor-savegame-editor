@@ -692,6 +692,15 @@ sub What {  #called by BrowseCmd
 	# leaf is set to 'can modify' to indicate this.  The one exception
 	# is when changing NPC's names.  The -data field on this leaf is the
 	# npc's original gff object, so we make construct our if statement as follows:
+
+	@levels=split /#/,$parm1;
+	shift @levels;
+
+	for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
+		$widge->destroy if Tk::Exists($widge);    }
+	@spawned_widgets=();
+	eval {$picture_label_photo->delete};
+
 	if ( ($tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
 	{
 		unless ($tree->info('exists',$parm1."#")) {  #first time opening node
@@ -701,12 +710,13 @@ sub What {  #called by BrowseCmd
 	elsif  ($tree->entrycget($parm1,-data) =~ /^jrl/) {
 		SpawnJRLWidgets($parm1);
 	}
-	else {
-		for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-			$widge->destroy if Tk::Exists($widge);    }
-		@spawned_widgets=();
-		eval {$picture_label_photo->delete};
+	elsif ($#levels == 1){
+		PrintScreenshot($parm1);
 	}
+	else {
+
+	}
+
 	my $mode=$tree->getmode($parm1);
 
 	if ($leaf_memory{$parm1} eq $mode){  #this bit prevents re-entry
@@ -714,36 +724,19 @@ sub What {  #called by BrowseCmd
 	}
 
 	$leaf_memory{$parm1}=$mode;
-	if ($mode eq 'none') { return; }
+	if ($mode eq 'none') {
+		return;
+	}
 	if ($mode eq 'close') {
 		if ($tree->info('exists',$parm1."#")) {  #first time opening node
 			$tree->delete('entry',$parm1."#");
-			@levels=split /#/,$parm1; print "Levels: $#levels\n";
+
+			print "Levels: $#levels\n";
 			#my $gameversion=shift @levels;  #should be 1 or 2 for KotOR1 or KotOR2
-			shift @levels;
 			my $gameversion=$levels[0];
 			if ($#levels == 1) {
-				print "Selected savegame: $levels[1]\n";
-
-				my $registered_path = GetRegisteredPath($gameversion);
-				my $screenFilePath = "$registered_path\\\\saves\\\\".$levels[1]."\\\\Screen.tga";
-
-				if (-e $screenFilePath) {
-					my $img=Imager->new();
-					$img->read( file=>"$registered_path\\\\saves\\\\".$levels[1]."\\\\Screen.tga", type=>'tga' ) or die $img->errstr; ;
-					# $img->read( data=>$tgadata, type=>'tga' ) or die $img->errstr; ;
-					my $buf;
-					my $ftyp='bmp'; #IMAGE FORMAT
-					$img->write(data=>\$buf,type=>$ftyp) or die $img->errstr; ;
-					$picture_label_photo=$mw->Photo(-data=>encode_base64($buf),-format=>$ftyp);
-					$picture_label=$mw->Label(
-						# -width => 640,
-						# -height => 480,
-						-image=>$picture_label_photo
-					)->pack(-side=>'top',-anchor=>'ne');
-
-				}
-
+				print "Selected save folder: $levels[1]\n";
+				# PrintScreenshot($parm1);
 				Populate_Level1($parm1);
 				Populate_Feats($parm1.'#Feats');
 				Populate_Journal($parm1);
@@ -6356,6 +6349,31 @@ sub LoadData {
 		}
 	);
 	print "Data loaded.\n";
+}
+sub PrintScreenshot {
+
+	my $treeitem=shift;
+	my $root='#'.(split /#/,$treeitem)[1].'#'.(split /#/,$treeitem)[2];
+	my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
+	my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
+
+	my $registered_path = GetRegisteredPath($gameversion);
+	my $screenFilePath = "$registered_path\\\\saves\\\\".$gamedir."\\\\Screen.tga";
+
+	if( -e $screenFilePath ) {
+
+		my $img=Imager->new();
+		$img->read( file=>$screenFilePath, type=>'tga' ) or die $img->errstr;
+		my $buf;
+		my $ftyp='bmp'; #IMAGE FORMAT
+		$img->write(data=>\$buf,type=>$ftyp) or die $img->errstr; ;
+		$picture_label_photo=$mw->Photo(-data=>encode_base64($buf),-format=>$ftyp);
+		$picture_label=$mw->Label(
+			-image=>$picture_label_photo
+		)->pack(-side=>'top',-anchor=>'ne');
+
+	}
+
 }
 
 sub CopyInventory {
