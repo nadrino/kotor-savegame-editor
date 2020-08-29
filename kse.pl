@@ -5550,6 +5550,8 @@ sub SpawnAddInventoryWidgets {
 					$newItemStruct = Bioware::GFF::Struct->new('ID'=>($lastItemStruct->{'ID'}));
 				}
 
+				$newItemStruct->{Fields} = ();
+
 				print "Reading each field in .uti file, and propagate changes...\n";
 				for my $lastItemStructField (@{$lastItemStruct->{'Fields'}}){
 					my $fieldLabel = $lastItemStructField->{'Label'};
@@ -5561,17 +5563,14 @@ sub SpawnAddInventoryWidgets {
 					}
 					else{
 						# Heritate from last item
-						if( $fieldLabel == 'ObjectID' ){
-							# push @{$newItemStruct->{Fields}}, $lastItemStructField;
-							# $newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+						if( $fieldLabel eq 'ObjectId' ){
+							# Ignoring -> also appears first in the list...
+							print "Applying: ".($lastItemStructField->{Value}+5)."\n";
+							$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>($lastItemStructField->{Value}+5));
 						}
 						else{
 							push @{$newItemStruct->{Fields}}, $lastItemStructField;
 						}
-
-						# if( $fieldLabel == 'ObjectID' ){
-						# 	# $newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-						# }
 
 					}
 
@@ -5580,6 +5579,13 @@ sub SpawnAddInventoryWidgets {
 					# 	@{$newItemStruct->{Fields}}[-1]->{Substrings} = [$cexolocsub];
 					# }
 
+				}
+
+				# Look for extra vars that could have been missed
+				if( 	defined( $uti_gff->{Main}->get_field_ix_by_label('TextureVar') )
+					and ! defined( $newItemStruct->get_field_ix_by_label('TextureVar') ) ){
+					print "Adding TextureVar...\n";
+					push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')];
 				}
 
 			}
