@@ -5199,7 +5199,7 @@ sub SpawnAddInventoryWidgets {
 	if (scalar keys %master_item_list == 0) {
 		$lbl->configure(-text=>"Building Master Item List...");
 		Generate_Master_Item_List($gameversion);
-		# $lbl->configure(-text=>"Available Items:");
+		$lbl->configure(-text=>"Available Items:");
 		if ($gameversion==1) { %master_item_list=%master_item_list1}
 		elsif ($gameversion==2) {%master_item_list=%master_item_list2}
 		elsif ($gameversion==3 && $use_tsl_cloud == 1) {%master_item_list=%master_item_list2}
