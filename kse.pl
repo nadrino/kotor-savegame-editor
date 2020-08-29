@@ -722,7 +722,28 @@ sub What {  #called by BrowseCmd
 			#my $gameversion=shift @levels;  #should be 1 or 2 for KotOR1 or KotOR2
 			shift @levels;
 			my $gameversion=$levels[0];
-			if ($#levels == 1) {print "\$parm1 is $parm1\n";
+			if ($#levels == 1) {
+				print "Selected savegame: $levels[1]\n";
+
+				my $registered_path = GetRegisteredPath($gameversion);
+				my $screenFilePath = "$registered_path\\\\saves\\\\".$levels[1]."\\\\Screen.tga";
+
+				if (-e $screenFilePath) {
+					my $img=Imager->new();
+					$img->read( file=>"$registered_path\\\\saves\\\\".$levels[1]."\\\\Screen.tga", type=>'tga' ) or die $img->errstr; ;
+					# $img->read( data=>$tgadata, type=>'tga' ) or die $img->errstr; ;
+					my $buf;
+					my $ftyp='bmp'; #IMAGE FORMAT
+					$img->write(data=>\$buf,type=>$ftyp) or die $img->errstr; ;
+					$picture_label_photo=$mw->Photo(-data=>encode_base64($buf),-format=>$ftyp);
+					$picture_label=$mw->Label(
+						# -width => 640,
+						# -height => 480,
+						-image=>$picture_label_photo
+					)->pack(-side=>'top',-anchor=>'ne');
+
+				}
+
 				Populate_Level1($parm1);
 				Populate_Feats($parm1.'#Feats');
 				Populate_Journal($parm1);
@@ -1273,8 +1294,6 @@ sub Populate_Level1 {
 		%soundset_hash=%soundset_hash3;
 		%standard_npcs=%tjm_npcs;
 	}
-
-
 
 	LoadData($treeitem);
 	my $root='#'.(split /#/,$treeitem)[1].'#'.(split /#/,$treeitem)[2];
