@@ -5210,22 +5210,28 @@ sub SpawnAddInventoryWidgets {
 	$numhere->bind('<Return>'=>sub {
 		my @selected_indices=$templatelist->info('selection');
 		return unless (scalar @selected_indices); # nothing selected
+
+		#! Loop over the selected item
 		for my $selected_index (@selected_indices) {
 
-			# Adding the selected item
-
-			# Get the .uti gff file which contains all infos about the item
+			# 0 is not an item
 			next if $selected_index==0;
+
+			# Check if the selected item is already in the inventory (based on its displayed color)
 			my $thisstyle=$templatelist->entrycget($selected_index,-style);   #check the style
 			if ($thisstyle) {                                                 # to see if it is already possessed
 				if ($thisstyle->cget(-foreground) eq $pstylefg) { next }
 			}
+
+			# Getting information about this item (.uti file)
 			my $this_item_text=$templatelist->entrycget($selected_index,-text);
 			LogIt("Adding Item: $this_item_text");
 			my $selected_uti=(split / /,$this_item_text)[0] . ".uti";
+			print "Loading uti file: ".$selected_uti."\n";
 			my $uti_gff=Bioware::GFF->new();
 			if (-e "$registered_path\\override\\$selected_uti") {
-				$uti_gff->read_gff_file("$registered_path\\override\\$selected_uti"); }
+				$uti_gff->read_gff_file("$registered_path\\override\\$selected_uti");
+			}
 			else {
 				my $bif=Bioware::BIF->new($registered_path,undef,'uti');
 				if ($bif == undef) { $bif=try_extracted_data($gameversion,undef,'uti') }
@@ -5234,126 +5240,190 @@ sub SpawnAddInventoryWidgets {
 			}
 
 
-
-			# Gathering infos about the selected item
-			my $itemlist_struct;
-			if( $treeitem =~/#Area#Placeables#/ ){
-				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>9);
-
-				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
-					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
-				}
-				else{
-					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-				}
-			}
-			elsif ( $treeitem =~/#Area#Stores#/ ){
-				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>99); # TODO: Change the id according to the place in the list
-
-				if( defined ($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')])){
-					push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
-				}
-				else{
-					$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-				}
-			}
-			else{
-				$itemlist_struct = Bioware::GFF::Struct->new('ID'=>0);
-			}
-
-			#create new struct in inventory item list based on uti fields
-			#            our $itemlist_struct;
-			#		$num_to_add += 0;
-			#		my $i;
-			#		for($i = 0,$i<=$num_to_add,$i++)
-			#		{
-
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('BaseItem')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Tag')]);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'Identified','Value'=>1);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Description')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('DescIdentified')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('LocalizedName')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('StackSize')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Stolen')]);
-			$itemlist_struct->createField('Type'=>FIELD_DWORD,'Label'=>'Upgrades','Value'=>0);
-			if ($gameversion==2 || 3 || 4) {
-				$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'UpgradeLevel','Value'=>$uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('UpgradeLevel')]{Value});
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot0','Value'=>-1);
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot1','Value'=>-1);
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot2','Value'=>-1);
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot3','Value'=>-1);
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot4','Value'=>-1);
-				$itemlist_struct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot5','Value'=>-1);
-			}
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'Pickpocketable','Value'=>1);
-			if (defined ($uti_gff->{Main}->get_field_ix_by_label('ModelVariation'))) {
-				push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ModelVariation')]);
-			} else {
-				$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'ModelVariation','Value'=>1);
-			}
-			#if (defined ($uti_gff->{Main}->get_field_ix_by_label('BodyVariation'))) {
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('BodyVariation')]);
-			#}
-			#if (defined ($uti_gff->{Main}->get_field_ix_by_label('TextureVar'))) {
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')]);
-			#}
-
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Charges')]);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'MaxCharges','Value'=>($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Charges')]{Value}));
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Cost')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('AddCost')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Plot')]);
-			push @{$itemlist_struct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('PropertiesList')]);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NonEquippable','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NewItem','Value'=>1);
-			$itemlist_struct->createField('Type'=>FIELD_BYTE,'Label'=>'DELETING','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'XPosition','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'YPosition','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZPosition','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'XOrientation','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'YOrientation','Value'=>0);
-			$itemlist_struct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZOrientation','Value'=>0);
-
-
-			# Adding the item info to the inv gff file
-			if( $treeitem =~/#Area#Placeables#/ ){
+			# Getting the current item list
+			my $itemList;
+			if( $treeitem =~ /#Area#/ ){
 				my $root='#'.$gameversion.'#'.$savegamedir;
 				my $datahash=$tree->entrycget($root,-data);
 				my $git_gff = $datahash->{'GFF-git'};
-				my $gitPlaceablesList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
-				my $itemList = $gitPlaceablesList->[$subInventoryIndex]{Fields}[$gitPlaceablesList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
-				push @{$itemList}, $itemlist_struct;
+				my $gitContainterStruct;
+				if( $treeitem =~ /#Area#Placeables#/ ){
+					$gitContainterStruct = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+				}
+				elsif( $treeitem =~ /#Area#Stores#/ ){
+					$gitContainterStruct = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+				}
+				$itemList = $gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
 			}
-			elsif( $treeitem =~/#Area#Stores#/ ){
-				my $root='#'.$gameversion.'#'.$savegamedir;
-				my $datahash=$tree->entrycget($root,-data);
-				my $git_gff = $datahash->{'GFF-git'};
-				my $gitStoresList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
-				my $itemList = $gitStoresList->[$subInventoryIndex]{Fields}[$gitStoresList->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
-				push @{$itemList}, $itemlist_struct;
-			}
-			else{
-				push @{$$inv_gff_ref->{Main}{Fields}{Value}}, $itemlist_struct;
+			else {
+				$itemList = $inv_gff_ref->{Main}{Fields}{Value};
 			}
 
-			#		}
+			my $newItemStruct;
+
+			# If the itemList is empty, create the item struct from scratch
+			if( scalar @{$itemList} == 0 || $treeitem =~ /#Inventory#/ ){
+
+				print "> Creating new item from scratch\n";
+
+				#create new struct in inventory item list based on uti fields
+				#            our $itemlist_struct;
+				#		$num_to_add += 0;
+				#		my $i;
+				#		for($i = 0,$i<=$num_to_add,$i++)
+				#		{
+
+				$newItemStruct = Bioware::GFF::Struct->new('ID'=>0);
+
+				# if( $treeitem =~/#Area#Placeables#/ ){
+				# 	$newItemStruct = Bioware::GFF::Struct->new('ID'=>9);
+				#
+				# 	if( defined ( $uti_gff->{Main}->get_field_ix_by_label('ObjectId') ) ){
+				# 		push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				# 	}
+				# 	else{
+				# 		$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+				# 	}
+				# }
+				# elsif ( $treeitem =~/#Area#Stores#/ ){
+				# 	$newItemStruct = Bioware::GFF::Struct->new('ID'=>99);
+				#
+				# 	if( defined ( $uti_gff->{Main}->get_field_ix_by_label('ObjectId') ) ){
+				# 		push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+				# 	}
+				# 	else{
+				# 		$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+				# 	}
+				# }
+				# else{
+				# 	$newItemStruct = Bioware::GFF::Struct->new('ID'=>0);
+				# }
+
+
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('BaseItem')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Tag')]);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Identified','Value'=>1);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Description')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('DescIdentified')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('LocalizedName')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('StackSize')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Stolen')]);
+				$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'Upgrades','Value'=>0);
+				if ($gameversion==2 || 3 || 4) {
+					$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'UpgradeLevel','Value'=>$uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('UpgradeLevel')]{Value});
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot0','Value'=>-1);
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot1','Value'=>-1);
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot2','Value'=>-1);
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot3','Value'=>-1);
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot4','Value'=>-1);
+					$newItemStruct->createField('Type'=>FIELD_INT,'Label'=>'UpgradeSlot5','Value'=>-1);
+				}
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Pickpocketable','Value'=>1);
+				if (defined ($uti_gff->{Main}->get_field_ix_by_label('ModelVariation'))) {
+					push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ModelVariation')]);
+				} else {
+					$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'ModelVariation','Value'=>1);
+				}
+				#if (defined ($uti_gff->{Main}->get_field_ix_by_label('BodyVariation'))) {
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('BodyVariation')]);
+				#}
+				#if (defined ($uti_gff->{Main}->get_field_ix_by_label('TextureVar'))) {
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')]);
+				#}
+
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Charges')]);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'MaxCharges','Value'=>($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Charges')]{Value}));
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Cost')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('AddCost')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Plot')]);
+				push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('PropertiesList')]);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'XPosition','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'YPosition','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZPosition','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'XOrientation','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'YOrientation','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_FLOAT,'Label'=>'ZOrientation','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'NonEquippable','Value'=>0);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'NewItem','Value'=>1);
+				$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'DELETING','Value'=>0);
+
+			}
+			else{
+
+				print "Making a copy of the last item in the list\n";
+				my $lastItemStruct = @{$itemList}[-1];
+
+				# Check if the id is incrementing for each item in the list
+				my $hasIncrementingId = 0;
+				if( scalar @{$itemList} >= 2 and @{$itemList}[-1]->{'ID'}-1 == @{$itemList}[-2]->{'ID'} ){
+					print "ID Incrementation detected\n";
+					$hasIncrementingId = 1;
+					$newItemStruct = Bioware::GFF::Struct->new('ID'=>($lastItemStruct->{'ID'}+1));
+				}
+				else{
+					$newItemStruct = Bioware::GFF::Struct->new('ID'=>($lastItemStruct->{'ID'}));
+				}
+
+				$newItemStruct->{Fields} = ();
+
+				print "Reading each field in .uti file, and propagate changes...\n";
+				for my $lastItemStructField (@{$lastItemStruct->{'Fields'}}){
+					my $fieldLabel = $lastItemStructField->{'Label'};
+					# print "  Field: ".$fieldLabel."\n";
+
+					if( defined( $uti_gff->{Main}->get_field_ix_by_label($fieldLabel) ) ){
+						# Propagate the uti field content
+						push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label($fieldLabel)];
+					}
+					else{
+						# Heritate from last item
+						if( $fieldLabel eq 'ObjectId' ){
+							# Ignoring -> also appears first in the list...
+							# print "Applying: ".($lastItemStructField->{Value}+5)."\n";
+							$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>($lastItemStructField->{Value}+5));
+						}
+						else{
+							push @{$newItemStruct->{Fields}}, $lastItemStructField;
+						}
+
+					}
+
+					# if( $fieldLabel == 'DescIdentified' || 'LocalizedName' ){
+					# 	my $cexolocsub = Bioware::GFF::CExoLocSubString->new('StringID'=>0,'Value'=>"test");
+					# 	@{$newItemStruct->{Fields}}[-1]->{Substrings} = [$cexolocsub];
+					# }
+
+				}
+
+				# Look for extra vars that could have been missed
+				if( 	defined( $uti_gff->{Main}->get_field_ix_by_label('TextureVar') )
+					and ! defined( $newItemStruct->get_field_ix_by_label('TextureVar') ) ){
+					# print "Adding TextureVar...\n";
+					push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')];
+				}
+
+			}
+
+			# $newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
+
+			# Adding the new item to the list
+			push @{$itemList}, $newItemStruct;
 
 			# Printing the new item in the displayed list
 			if( $treeitem =~/#Area#Placeables#/ || $treeitem =~/#Area#Stores#/ ){
-				my $strref=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+				my $strref=$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 				# print "-> strref = ".$strref."\n;
 				my $item_name;
 				if ($strref==-1) {
-					$item_name=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
+					$item_name=$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
 				else {
 					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
 				}
 
-				my $tag = lc $itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('Tag')]{Value};
-				$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('StackSize')]{Value}=$num_to_add;
-				my $stack = $itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('StackSize')]{Value};
+				my $tag = lc $newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('Tag')]{Value};
+				$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('StackSize')]{Value}=$num_to_add;
+				my $stack = $newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('StackSize')]{Value};
 				my $prettyItem=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
 
 				print "Added: ".$prettyItem."\n";
@@ -5367,10 +5437,10 @@ sub SpawnAddInventoryWidgets {
 					if ($1 > $last_child_ix) { $last_child_ix = $1 }
 				}
 				$last_child_ix++;
-				my $strref=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+				my $strref=$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 				my $item_name;
 				if ($strref==-1) {
-					$item_name=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
+					$item_name=$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
 				else {
 					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
 				}
@@ -5379,12 +5449,11 @@ sub SpawnAddInventoryWidgets {
 				$num_to_add = $num_to_add + 0;# print $num_to_add;
 
 				my $tag=lc $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('Tag')]{Value};  #make sure this is used so can be found in BIF
-				$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('StackSize')]{Value}=$num_to_add;
-				my $stack=$itemlist_struct->{Fields}[$itemlist_struct->get_field_ix_by_label('StackSize')]{Value};
+				$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('StackSize')]{Value}=$num_to_add;
+				my $stack=$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('StackSize')]{Value};
 				my $pretty_item=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
 				$tree->add($treeitem."#$tag"."__$last_child_ix",-text=>$pretty_item,-data=>'can modify');
 			}
-
 
 			# update style in list
 			$templatelist->entryconfigure($selected_index,-style=>$possessedstyle);
@@ -5541,8 +5610,8 @@ sub SpawnAddInventoryWidgets {
 
 				# Check if the id is incrementing for each item in the list
 				my $hasIncrementingId = 0;
-				if( @{$itemList}[-1]->{'ID'}-1 == @{$itemList}[-2]->{'ID'} ){
-					print "ID Increamentation detected\n";
+				if( scalar @{$itemList} >= 2 and @{$itemList}[-1]->{'ID'}-1 == @{$itemList}[-2]->{'ID'} ){
+					print "ID Incrementation detected\n";
 					$hasIncrementingId = 1;
 					$newItemStruct = Bioware::GFF::Struct->new('ID'=>($lastItemStruct->{'ID'}+1));
 				}
@@ -5555,7 +5624,7 @@ sub SpawnAddInventoryWidgets {
 				print "Reading each field in .uti file, and propagate changes...\n";
 				for my $lastItemStructField (@{$lastItemStruct->{'Fields'}}){
 					my $fieldLabel = $lastItemStructField->{'Label'};
-					print "  Field: ".$fieldLabel."\n";
+					# print "  Field: ".$fieldLabel."\n";
 
 					if( defined( $uti_gff->{Main}->get_field_ix_by_label($fieldLabel) ) ){
 						# Propagate the uti field content
@@ -5565,7 +5634,7 @@ sub SpawnAddInventoryWidgets {
 						# Heritate from last item
 						if( $fieldLabel eq 'ObjectId' ){
 							# Ignoring -> also appears first in the list...
-							print "Applying: ".($lastItemStructField->{Value}+5)."\n";
+							# print "Applying: ".($lastItemStructField->{Value}+5)."\n";
 							$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>($lastItemStructField->{Value}+5));
 						}
 						else{
@@ -5584,7 +5653,7 @@ sub SpawnAddInventoryWidgets {
 				# Look for extra vars that could have been missed
 				if( 	defined( $uti_gff->{Main}->get_field_ix_by_label('TextureVar') )
 					and ! defined( $newItemStruct->get_field_ix_by_label('TextureVar') ) ){
-					print "Adding TextureVar...\n";
+					# print "Adding TextureVar...\n";
 					push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')];
 				}
 
