@@ -6942,6 +6942,7 @@ sub Load {
 	my $branch_to_populate=shift;
 	#Read KotOR1 saves
 	if ($k1_installed && (($branch_to_populate == undef)||($branch_to_populate==1))) {
+		print "Reading KotOR saves...\n";
 		unless (opendir SAVDIR, $path{kotor}."/saves") {                                        #saves directory not found
 			$mw->messageBox(-title=>'Directory not found',
 				-message=>'Could not find saves directory for KotOR1',-type=>'Ok');
@@ -6962,6 +6963,7 @@ sub Load {
 		}
 	}
 	if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==2))) {
+		print "Reading KotOR II - TSL saves...\n";
 		unless (opendir SAVDIR2, $path{tsl_save}) {                                        #saves directory not found
 			$mw->messageBox(-title=>'Directory not found',
 				-message=>'Could not find saves directory for KotOR2',-type=>'Ok');
@@ -6983,6 +6985,7 @@ sub Load {
 		}
 	}
 	if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==3))) {
+		print "Reading KotOR II - TSL (Cloud) saves...\n";
 		unless (opendir SAVDIR2, $path{tsl_cloud}) {                                        #saves directory not found
 			$mw->messageBox(-title=>'Directory not found',
 				-message=>'Could not find cloudsaves directory for KotOR2',-type=>'Ok');
@@ -7009,6 +7012,7 @@ sub Load {
 		{
 			if($branch_to_populate == 3)
 			{
+				print "Reading KotOR III - TJM saves...\n";
 				if(-e $path{tjm}."/saves") {# print "path found\n";
 					unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
 						$mw->messageBox(-title=>'Directory not found',
