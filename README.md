@@ -45,5 +45,4 @@ pp --gui -o KSE.exe kse.pl
 ## Contributors Prior to this Repository
 
 - FairStrides
-- Pazuzu156
 - tk102 - Original KSE author
