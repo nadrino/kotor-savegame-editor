@@ -1,5 +1,6 @@
 # KotOR Savegame Editor
 
+![](boba.bmp) 
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg) 
 [![GitHub version](https://badge.fury.io/gh/nadrino%2Fkotor-savegame-editor-reloaded.svg)](https://github.com/nadrino/kotor-savegame-editor-reloaded/releases/)
 [![Github all releases](https://img.shields.io/github/downloads/nadrino/kotor-savegame-editor-reloaded/total.svg)](https://GitHub.com/nadrino/kotor-savegame-editor-reloaded/releases/)
