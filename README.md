@@ -7,10 +7,24 @@
 
 Recompiled with extra functionnalities
 
-## Getting Started (Windows)
+
+## Download
+
+- Download the zip file named `KSE_XXX.zip` in the release section: [link](https://github.com/nadrino/kotor-savegame-editor-reloaded/releases).
+- Unzip this file in a folder of your choice.
+- Make sure `kse.ini` contains the right paths to your KotOR games. By default those point towards the Steam versions. You can use the embedded [KPF.exe](https://bitbucket.org/kotorsge-team/kpf-gtk/downloads/) to help you set these up.
+- Launch `KSE.exe`
+
+
+## Screenshot
+
+![](screenshots/screen1.png)
+
+
+## Build On Windows
 
 - Install perl 5.16.3.1 32bits (portable) http://strawberryperl.com/releases.html
-- Unzip
+- Unzip the archive in the folder of your cloned repository
 - Open Powershell
 - Exectue .bat file in the unzipped directory to setup the environement for perl
 - Install required dependencies :
@@ -27,10 +41,8 @@ pp --gui -o KSE.exe kse.pl
 ```
 - Launch KSE.exe
 
-## Configuration
-By default, kse.ini contains the kotor path to the Steam version. Feel free to set yours by hand or use KPF (https://bitbucket.org/kotorsge-team/kpf-gtk/src/master/).
 
-## Post-Repository Contributors
+## Contributors Prior to this Repository
 
 - FairStrides
 - Pazuzu156
