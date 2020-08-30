@@ -32,6 +32,6 @@ By default, kse.ini contains the kotor path to the Steam version. Feel free to s
 
 ## Post-Repository Contributors
 
-FairStrides
-Pazuzu156
-tk102 - Original KSE author
+- FairStrides
+- Pazuzu156
+- tk102 - Original KSE author
