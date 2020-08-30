@@ -29,3 +29,9 @@ pp --gui -o KSE.exe kse.pl
 
 ## Configuration
 By default, kse.ini contains the kotor path to the Steam version. Feel free to set yours by hand or use KPF (https://bitbucket.org/kotorsge-team/kpf-gtk/src/master/).
+
+## Post-Repository Contributors
+
+FairStrides
+Pazuzu156
+tk102 - Original KSE author
