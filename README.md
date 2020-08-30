@@ -1,5 +1,11 @@
-# kse-reloaded
-Kotor Savegame Editor - Recompiled with extra functionnalities
+# KotOR Savegame Editor
+
+![](boba.bmp) 
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg) 
+[![GitHub version](https://badge.fury.io/gh/nadrino%2Fkotor-savegame-editor-reloaded.svg)](https://github.com/nadrino/kotor-savegame-editor-reloaded/releases/)
+[![Github all releases](https://img.shields.io/github/downloads/nadrino/kotor-savegame-editor-reloaded/total.svg)](https://GitHub.com/nadrino/kotor-savegame-editor-reloaded/releases/)
+
+Recompiled with extra functionnalities
 
 ## Getting Started (Windows)
 
@@ -23,3 +29,9 @@ pp --gui -o KSE.exe kse.pl
 
 ## Configuration
 By default, kse.ini contains the kotor path to the Steam version. Feel free to set yours by hand or use KPF (https://bitbucket.org/kotorsge-team/kpf-gtk/src/master/).
+
+## Post-Repository Contributors
+
+- FairStrides
+- Pazuzu156
+- tk102 - Original KSE author
