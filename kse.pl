@@ -696,10 +696,7 @@ sub What {  #called by BrowseCmd
 	@levels=split /#/,$parm1;
 	shift @levels;
 
-	for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-		$widge->destroy if Tk::Exists($widge);    }
-	@spawned_widgets=();
-	eval {$picture_label_photo->delete};
+
 
 	if ( ($tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
 	{
@@ -710,11 +707,15 @@ sub What {  #called by BrowseCmd
 	elsif  ($tree->entrycget($parm1,-data) =~ /^jrl/) {
 		SpawnJRLWidgets($parm1);
 	}
-	elsif ($#levels == 1){
-		PrintScreenshot($parm1);
-	}
 	else {
+		for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
+			$widge->destroy if Tk::Exists($widge);    }
+		@spawned_widgets=();
+		eval {$picture_label_photo->delete};
+	}
 
+	if ($#levels == 1){
+		PrintScreenshot($parm1);
 	}
 
 	my $mode=$tree->getmode($parm1);
