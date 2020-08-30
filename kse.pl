@@ -146,6 +146,7 @@ use Tk::ItemStyle;
 # use Tk::ErrorDialog;
 require Tk::Dialog;
 our $version='v3.4.2';
+print "KSE ".$version." is starting...\n";
 if ($Tk::VERSION  eq '800.029') { $version .= ' alternate'}
 use Win32::FileOp;
 use Win32::TieRegistry;
@@ -593,8 +594,9 @@ if($num_args eq 2)
 	}
 }
 
-system 1, "updater.exe", "/Version", $version, "/LaunchFromApplication";
+# system 1, "updater.exe", "/Version", $version, "/LaunchFromApplication";
 
+print "Starting main loop...\n";
 MainLoop;
 LogIt ("---------Termination--------\n\n");
 close STDERR;
@@ -7259,6 +7261,7 @@ sub Load {
 			our $twoda_obj=Bioware::TwoDA->new();
 			if($open{1} < 1)
 			{
+				print "Loading KotOR data...\n";
 				$open{1} = 1;
 				if ($k1_installed)
 				{
@@ -7480,6 +7483,7 @@ sub Load {
 					#   print "hi! 2\n";
 					if($open{2} < 1)
 					{
+						print "Loading KotOR 2 - TSL data...\n";
 						$open{2} = 1;
 
 						our $twoda_obj=Bioware::TwoDA->new();
@@ -7789,6 +7793,7 @@ sub Load {
 			#    print "hi! 3\n";
 			if($open{3} < 1)
 			{
+				print "Loading KotOR III - The Jedi Masters data...\n";
 				$open{3} = 1;
 
 				our $twoda_obj=Bioware::TwoDA->new();
