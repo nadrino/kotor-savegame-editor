@@ -10,7 +10,7 @@ Recompiled with extra functionnalities
 
 ## Download
 
-- Download the zip file named `KSE_XXX.zip` in the release section: [link](https://github.com/nadrino/kotor-savegame-editor-reloaded/releases).
+- Download the zip file named `KSE_XXX.zip` (when `XXX` is the latest version) in the release section: [link](https://github.com/nadrino/kotor-savegame-editor-reloaded/releases).
 - Unzip this file in a folder of your choice.
 - Make sure `kse.ini` contains the right paths to your KotOR games. By default those point towards the Steam versions. You can use the embedded [KPF.exe](https://bitbucket.org/kotorsge-team/kpf-gtk/downloads/) to help you set these up.
 - Launch `KSE.exe`
