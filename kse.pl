@@ -732,7 +732,7 @@ sub What {  #called by BrowseCmd
 		if ($tree->info('exists',$parm1."#")) {  #first time opening node
 			$tree->delete('entry',$parm1."#");
 
-			print "Levels: $#levels\n";
+			# print "Levels: $#levels\n";
 			#my $gameversion=shift @levels;  #should be 1 or 2 for KotOR1 or KotOR2
 			my $gameversion=$levels[0];
 			if ($#levels == 1) {
@@ -2179,6 +2179,8 @@ sub Populate_AreaContainer{
 	my $containerType = $treeLevels[3];
 	my $registeredPath = GetRegisteredPath($gameVersion);
 
+	print "Populating ".$containerType."...";
+
 	# Getting back the save data
 	my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
 	my $dataHash = $tree->entrycget($treeRoot,-data);
@@ -2199,11 +2201,12 @@ sub Populate_AreaContainer{
 		$containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
 	}
 	else{
+		print "\n";
 		return;
 	}
 
 	my $nbContainers = scalar @$containerList;
-	print "Number of $containerType in the current module: ".$nbContainers."\n";
+	print " ".$nbContainers." containers have been found.\n";
 
 	my $iContainer = 0;
 	foreach(@$containerList) {
@@ -2211,7 +2214,6 @@ sub Populate_AreaContainer{
 		# my $container = $containerList->[$iContainer]; # Does not work
 
 		my $containerTag 	= $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('Tag')]{Value};
-		print "-> $containerTag\n";
 
 		my $containerStrref;
 		if( $containerType eq 'Creatures' ){
@@ -2231,6 +2233,7 @@ sub Populate_AreaContainer{
 
 			my $itemList = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('ItemList')]{Value};
 
+			print "  ".$containerDisplayTitle."\n";
 			$tree->add(
 				$treeItem."#".$iContainer."_".$containerTag,
 				-text=>$containerDisplayTitle,
@@ -2238,6 +2241,7 @@ sub Populate_AreaContainer{
 			);
 
 			my $iItem=0;
+			# for my $item (sort @items){
 			foreach(@$itemList){
 
 				if( 	$containerType eq 'Creatures'
@@ -2246,11 +2250,8 @@ sub Populate_AreaContainer{
 					next;
 				}
 
-
-				# my $item = $itemList->[$iItem];
 				my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 
-				print $itemStrref."\n";
 				my $itemName;
 				if( $itemStrref == -1 ) {
 					$itemName = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value};
@@ -2263,7 +2264,7 @@ sub Populate_AreaContainer{
 				my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
 				my $itemTitle	= sprintf( "%-32s%s  [%d]", $itemTag, $itemName, $itemStack );
 
-				print $itemTitle."\n";
+				print "    ".$itemTitle."\n";
 				$tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag, -text=>$itemTitle, -data=>'can modify');
 				$tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag);
 				$iItem++;
@@ -2470,6 +2471,8 @@ sub CommitChanges {
 	my $treeitem=shift;
 	my $gv;
 	my $gm;
+
+	print "Committing changes...\n";
 
 	my @parms = split /#/, $treeitem;
 	#	print join /\n/, @parms;
@@ -2757,6 +2760,9 @@ sub CommitChanges {
 
 	$mw->Dialog(-title=>'Save Successful',-text=>"File $registered_path\\$gamedir\\savegame.sav saved successfully.",-font=>['MS Sans Serif','8'],-buttons=>['Ok'])->Show();
 	# exec($^X, $0, @ARGV);
+
+	print "Commit changes has been done.\n";
+
 }
 
 
