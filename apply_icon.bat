@@ -1,1 +1,0 @@
-perl -e "use Win32::Exe; $exe = Win32::Exe->new('KSE.exe'); $exe->set_single_group_icon('boba.ico'); $exe->write;"
