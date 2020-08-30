@@ -2168,152 +2168,6 @@ sub Populate_NPC{
 }
 
 #>>>>>>>>>>>>>>>>>>>>
-sub Populate_Placeables{
-	#>>>>>>>>>>>>>>>>>>>>
-	print "Populate_Placeables...\n";
-
-	# Pulling game version and gamedir (which savegame)
-	my $treeitem=shift;
-	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
-	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
-	my $registered_path=GetRegisteredPath($gameversion);
-
-	my $root='#'.$gameversion.'#'.$savegamedir;
-	my $datahash=$tree->entrycget($root,-data);
-	my $git_gff = $datahash->{'GFF-git'};
-
-	# Looking for placeable with an inventory
-	my $git_placeablelist=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
-	my $len = scalar @$git_placeablelist;
-	print "Number of placeables in current module: ".$len."\n";
-	my $i_placeable = 0;
-	# my @placeable_tags_list;
-	foreach(@$git_placeablelist)
-	{
-		my $itemlist = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('ItemList')]{Value};
-		if(scalar @$itemlist){ # if the itemList is not empty
-			my $ref = $git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('Tag')]{Value};
-			my $strrefPlaceable=$git_placeablelist->[$i_placeable]{Fields}[$git_placeablelist->[$i_placeable]->get_field_ix_by_label('LocName')]{Value}{StringRef};
-			my $Placeablename;
-			if ($strrefPlaceable==-1) {
-				$Placeablename="Unnamed";
-			}
-			else {
-				$Placeablename=Bioware::TLK::string_from_resref($registered_path,$strrefPlaceable);
-			}
-			my $prettyName=sprintf("%-32s%s",$ref,$Placeablename);
-			print $i_placeable." -> ".$ref."\n";
-			# push @placeable_tags_list, $i_placeable."_".$ref;
-			$tree->add(
-				$treeitem."#".$i_placeable."_".$ref,
-				-text=>$prettyName,
-				-data=>'can modify'
-			);
-
-			my $i_item=0;
-			foreach(@$itemlist){
-				# my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-
-				my $strref=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
-				# print "-> strref = ".$strref."\n";
-				my $item_name;
-				if ($strref==-1) {
-					$item_name=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
-				else {
-					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
-				}
-
-				my $tag = lc $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-				my $stack = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('StackSize')]{Value};
-				my $prettyItem=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
-
-				print $prettyItem."\n";
-				$tree->add($treeitem."#".$i_placeable."_".$ref."#".$tag, -text=>$prettyItem, -data=>'can modify');
-				$tree->hide('entry',$treeitem."#".$i_placeable."_".$ref."#".$tag);
-				$i_item++;
-			}
-		}
-
-		$i_placeable++;
-	}
-
-	$tree->autosetmode();
-}
-
-#>>>>>>>>>>>>>>>>>>>>
-sub Populate_Stores{
-	#>>>>>>>>>>>>>>>>>>>>
-	print "Populate_Stores...\n";
-
-	# Pulling game version and gamedir (which savegame)
-	my $treeitem=shift;
-	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
-	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
-	my $registered_path=GetRegisteredPath($gameversion);
-
-	my $root='#'.$gameversion.'#'.$savegamedir;
-	my $datahash=$tree->entrycget($root,-data);
-	my $git_gff = $datahash->{'GFF-git'};
-
-	# Looking for placeable with an inventory
-	my $storeList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
-	my $nbStores = scalar @$storeList;
-	print "Number of stores in current module: ".$nbStores."\n";
-	my $iStore = 0;
-	# my @placeable_tags_list;
-	foreach(@$storeList)
-	{
-		my $itemlist = $storeList->[$iStore]{Fields}[$storeList->[$iStore]->get_field_ix_by_label('ItemList')]{Value};
-		if(scalar @$itemlist){ # if the itemList is not empty
-			my $ref = $storeList->[$iStore]{Fields}[$storeList->[$iStore]->get_field_ix_by_label('Tag')]{Value};
-			my $strrefPlaceable=$storeList->[$iStore]{Fields}[$storeList->[$iStore]->get_field_ix_by_label('LocName')]{Value}{StringRef};
-			my $Placeablename;
-			if ($strrefPlaceable==-1) {
-				$Placeablename="Unnamed";
-			}
-			else {
-				$Placeablename=Bioware::TLK::string_from_resref($registered_path,$strrefPlaceable);
-			}
-			my $prettyName=sprintf("%-32s%s",$ref,$Placeablename);
-			print $iStore." -> ".$ref."\n";
-			# push @placeable_tags_list, $i_placeable."_".$ref;
-			$tree->add(
-				$treeitem."#".$iStore."_".$ref,
-				-text=>$prettyName,
-				-data=>'can modify'
-			);
-
-			my $i_item=0;
-			foreach(@$itemlist){
-				# my $item = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-
-				my $strref=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
-				# print "-> strref = ".$strref."\n";
-				my $item_name;
-				if ($strref==-1) {
-					$item_name=$itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value}; }
-				else {
-					$item_name=Bioware::TLK::string_from_resref($registered_path,$strref);
-				}
-
-				my $tag = lc $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('Tag')]{Value};
-				my $stack = $itemlist->[$i_item]{Fields}[$itemlist->[$i_item]->get_field_ix_by_label('StackSize')]{Value};
-				my $prettyItem=sprintf("%-32s%s  [%d]",$tag,$item_name,$stack);
-
-				print $prettyItem."\n";
-				$tree->add($treeitem."#".$iStore."_".$ref."#".$tag, -text=>$prettyItem, -data=>'can modify');
-				$tree->hide('entry',$treeitem."#".$iStore."_".$ref."#".$tag);
-				$i_item++;
-			}
-		}
-
-		$iStore++;
-	}
-
-	$tree->autosetmode();
-}
-
-#>>>>>>>>>>>>>>>>>>>>
 sub Populate_AreaContainer{
 
 	# Pulling game version and gamedir (which savegame)
@@ -2357,7 +2211,15 @@ sub Populate_AreaContainer{
 
 		my $containerTag 	= $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('Tag')]{Value};
 		print "-> $containerTag\n";
-		my $containerStrref = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('LocName')]{Value}{StringRef};
+
+		my $containerStrref;
+		if( $containerType eq 'Creatures' ){
+			$containerStrref = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('FirstName')]{Value}{StringRef};
+		}
+		else{
+			$containerStrref = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('LocName')]{Value}{StringRef};
+		}
+
 		my $containerName 	= "Unnamed";
 		if ( $containerStrref != -1 ) {
 			$containerName=Bioware::TLK::string_from_resref( $registeredPath,$containerStrref );
@@ -2377,8 +2239,17 @@ sub Populate_AreaContainer{
 			my $iItem=0;
 			foreach(@$itemList){
 
+				if( 	$containerType eq 'Creatures'
+					and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
+					# skip
+					next;
+				}
+
+
 				# my $item = $itemList->[$iItem];
 				my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+
+				print $itemStrref."\n";
 				my $itemName;
 				if( $itemStrref == -1 ) {
 					$itemName = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value};
@@ -2421,42 +2292,6 @@ sub Populate_AreaContainer{
 
 	$tree->autosetmode();
 
-}
-
-
-#>>>>>>>>>>>>>>>>>>>>
-sub Populate_Doors{
-	#>>>>>>>>>>>>>>>>>>>>
-	print "Populate_Doors...\n";
-
-	# Pulling game version and gamedir (which savegame)
-	my $treeitem=shift;
-	my $gameversion=(split /#/,$treeitem)[1]; print "\$gameversion is: $gameversion\n";
-	my $savegamedir=(split /#/,$treeitem)[2]; print "\$savegamedir is: $savegamedir\n";
-	my $registered_path=GetRegisteredPath($gameversion);
-
-	my $root='#'.$gameversion.'#'.$savegamedir;
-	my $datahash=$tree->entrycget($root,-data);
-	my $git_gff = $datahash->{'GFF-git'};
-
-	# Looking for placeable with an inventory
-	my $doorsList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
-	my $nbStores = scalar @$doorsList;
-	print "Number of stores in current module: ".$nbStores."\n";
-	my $iDoor = 0;
-	# my @placeable_tags_list;
-	foreach(@$doorsList)
-	{
-		my $ref = $doorsList->[$iDoor]{Fields}[$doorsList->[$iDoor]->get_field_ix_by_label('Tag')]{Value};
-		$tree->add(
-			$treeitem."#".$iDoor."_".$ref,
-			-text=>$ref,
-			-data=>'can modify'
-		);
-		$iDoor++;
-	}
-
-	$tree->autosetmode();
 }
 
 
@@ -5445,34 +5280,28 @@ sub SpawnAddInventoryWidgets {
 				print "> Creating new item from scratch\n";
 
 				if( $treeitem =~/#Area#Placeables#/ ){
-					$newItemStruct = Bioware::GFF::Struct->new('ID'=>9);
+					$newItemStruct = Bioware::GFF::Struct->new('ID'=>9, 'StructIndex'=>undef, 'Fields'=>[]);
 
-					if( defined ( $uti_gff->{Main}->get_field_ix_by_label('ObjectId'))){
-						push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
-					}
-					else{
-						$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-					}
+					# $newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>5);
+					# $newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
 				}
 				elsif ( $treeitem =~ /#Area#Creatures#/ ){
-					$newItemStruct = Bioware::GFF::Struct->new('ID'=>99); # TODO: Change the id according to the place in the list
+					$newItemStruct = Bioware::GFF::Struct->new('ID'=>0, 'StructIndex'=>undef, 'Fields'=>[]);
 
-					if( defined ( $uti_gff->{Main}->get_field_ix_by_label('ObjectId') )){
-						push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
-					}
-					else{
-						$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-					}
+					$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
+
+					# if( defined ( $uti_gff->{Main}->get_field_ix_by_label('ObjectId') )){
+					# 	push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
+					# }
+					# else{
+					# 	$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>6);
+					# }
 				}
 				elsif ( $treeitem =~/#Area#Stores#/ ){
-					$newItemStruct = Bioware::GFF::Struct->new('ID'=>99); # TODO: Change the id according to the place in the list
+					$newItemStruct = Bioware::GFF::Struct->new('ID'=>99, 'StructIndex'=>undef, 'Fields'=>[]);
 
-					if( defined ($uti_gff->{Main}->get_field_ix_by_label('ObjectId'))){
-						push @{$newItemStruct->{Fields}},($uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('ObjectId')]);
-					}
-					else{
-						$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
-					}
+					$newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>5);
+					# $newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
 				}
 				else{
 					$newItemStruct = Bioware::GFF::Struct->new('ID'=>0);
@@ -5581,8 +5410,17 @@ sub SpawnAddInventoryWidgets {
 					# print "Adding TextureVar...\n";
 					push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')];
 				}
+				elsif( $treeitem =~ /#Area#Creatures#/ ){ # The added item should be droppable
+					if( !defined($newItemStruct->get_field_ix_by_label('Dropable')) ){
+						$newItemStruct->createField('Type'=>FIELD_BYTE,'Label'=>'Dropable','Value'=>1);
+					}
+					else{
+						$newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('Dropable')]{Value} = 1;
+					}
+				}
 
 			}
+
 
 			# $newItemStruct->createField('Type'=>FIELD_DWORD,'Label'=>'ObjectId','Value'=>-1);
 
