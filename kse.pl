@@ -5058,10 +5058,79 @@ sub SpawnAddInventoryWidgets {
     my $baseitems_hash_ref;
     my $registered_path;
 
+    my $yOffset = 0;
+
     my $selectedEntry = (split /#/,$treeitem)[-1];
     my $subInventoryIndex = -1;
     if($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~ /#Area#Stores#/){
+
+
+        my @treeLevels = split /#/, $treeitem;
+        shift @treeLevels;
+        my $containerType = $treeLevels[3];
+
         $subInventoryIndex = (split /_/, $selectedEntry)[0];
+
+        my $containerTreeName=(split /#/,$treeitem)[-1];
+
+        my $root='#'.$gameversion.'#'.$savegamedir;
+        my $datahash=$tree->entrycget($root,-data);
+        my $git_gff = $datahash->{'GFF-git'};
+
+        my $containerList;
+        if( $containerType eq 'Stores' ){
+            $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
+        }
+        elsif( $containerType eq 'Placeables' ){
+            $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
+        }
+        elsif( $containerType eq 'Creatures' ){
+            $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Creature List')]{Value};
+        }
+
+        # my $containerList=$git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
+        my $iContainer = 0;
+        my $containerName = $tree->entrycget($treeitem,-text);
+        my $selectedContainerId;
+        foreach(@$containerList) {
+            my $containerTag = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('Tag')]{Value};
+            if($iContainer."_".$containerTag == $containerTreeName){
+                $selectedContainerId = $iContainer;
+                # $containerName = $containerTag;
+            }
+            $iContainer++;
+        }
+
+        # Building UI
+        $yOffset += 20;
+        my $labelContainerName=$mw->Label(-text=>$containerName,-font=>['MS Sans Serif','8'])->place(-relx=>625/$x,-rely=>$yOffset/$y,-anchor=>'sw');
+        push @spawned_widgets,$labelContainerName;
+
+
+        ## X Position
+        $yOffset += 25;
+        my $labelXPosition=$mw->Label(-text=>'X Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>625/$x,-rely=>$yOffset/$y,-anchor=>'sw');
+        push @spawned_widgets,$labelXPosition;
+        my $xPosition = $containerList->[$selectedContainerId]{Fields}[$containerList->[$selectedContainerId]->get_field_ix_by_label('X')]{Value};
+        my $boxXPosition=$mw->Label(-text=>$xPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>725/$x,-rely=>50/$y,-anchor=>'sw');
+        push @spawned_widgets,$boxXPosition;
+
+        ## Y Position
+        $yOffset += 25;
+        my $labelYPosition=$mw->Label(-text=>'Y Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>625/$x,-rely=>$yOffset/$y,-anchor=>'sw');
+        push @spawned_widgets,$labelYPosition;
+        my $yPosition = $containerList->[$selectedContainerId]{Fields}[$containerList->[$selectedContainerId]->get_field_ix_by_label('Y')]{Value};
+        my $boxYPosition=$mw->Label(-text=>$yPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>725/$x,-rely=>75/$y,-anchor=>'sw');
+        push @spawned_widgets,$boxYPosition;
+
+        ## Z Position
+        # $yOffset += 25;
+        # my $labelZPosition=$mw->Label(-text=>'Z Position: ',-font=>['MS Sans Serif','10'])->place(-relx=>625/$x,-rely=>$yOffset/$y,-anchor=>'sw');
+        # push @spawned_widgets,$labelZPosition;
+        # my $zPosition = $containerList->[$selectedContainerId]{Fields}[$containerList->[$selectedContainerId]->get_field_ix_by_label('Z')]{Value};
+        # my $boxZPosition=$mw->Label(-text=>$zPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>725/$x,-rely=>100/$y,-anchor=>'sw');
+        # push @spawned_widgets,$boxZPosition;
+
     }
 
     if ($gameversion==1) { %master_item_list=%master_item_list1; $registered_path=$path{kotor}; $baseitems_hash_ref=\%baseitems_hash1;}
