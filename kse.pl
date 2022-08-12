@@ -1537,7 +1537,7 @@ sub Read_Global_Vars{
     }
     my $catnumber_ix=$gff->{Main}->get_field_ix_by_label('CatNumber');
     my $catnumber_count=scalar @{$gff->{Main}{Fields}[$catnumber_ix]{'Value'}};
-    my @byts=unpack("C$catnumber_count",$gff->{Main}{Fields}[$gff->{Main}->get_field_ix_by_label('ValNumber')]{'Value'});
+    my @byts=unpack("c$catnumber_count",$gff->{Main}{Fields}[$gff->{Main}->get_field_ix_by_label('ValNumber')]{'Value'});
     for (my $i=0; $i< scalar @{$gff->{Main}{Fields}[$catnumber_ix]{'Value'}}; $i++) {
         my $kee=$gff->{Main}{Fields}[$catnumber_ix]{'Value'}[$i]{'Fields'}{'Value'}."__$i";
         $numrics{$kee}=$byts[$i];
