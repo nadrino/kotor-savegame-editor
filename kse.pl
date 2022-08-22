@@ -349,8 +349,8 @@ my $use_tsl_cloud = 0;
 # 	system(@o);
 # }
 
-if(-e "$workingdir/KSE.ini")
-{
+if(-e "$workingdir/KSE.ini") {
+    print "Reading KSE.ini...\n";
     open INI, "<", "$workingdir/KSE.ini";
 
     my $line = undef;
@@ -376,6 +376,97 @@ if(-e "$workingdir/KSE.ini")
         if($line =~ /Use_K2_Cloud=(.*)/)     { $use_tsl_cloud   = $1; }
     }
     close INI;
+}
+
+sub initKotor2{
+    print "Initializing kotor 2 path...\n";
+
+    # Game folder
+    if( !( -e $path{tsl} ) ){
+        print "Could not find TSL game folder."."\n";
+
+    unless ($browsed_path=BrowseForFolder('Locate TSL installation directory'))
+    {
+     my $Query=$mw->Dialog(-title=>"Warning",-text=>"You have cancelled out of the folder window.\n You will not be able to edit saved games for KotOR 2.\n Do you wish to proceed?",-font=>['MS Sans Serif','8'],-buttons=>['Yes','No'])->Show();
+
+     if ($Query eq 'No') { $browsed_path=BrowseForFolder('Locate TSL installation directory'); }
+     else
+     {
+         $browsed_path = undef;
+         $k2_installed = -1;
+     }
+    }
+
+    if(defined($browsed_path))
+    {
+     if (-e $browsed_path."/chitin.key")   { $k2_installed=1; $path{tsl}=$browsed_path;}
+    }
+
+        return -1;
+    }
+
+    # Save folder
+    if( -e $path{'tsl_save'} ){
+        print "Found specified TSL save path: ".$path{'tsl_save'}."\n";
+    }
+    else{
+        print "Could not find ".$path{'tsl_save'}.": looking for save folder...\n";
+        if( -e $path{tsl} . "/saves" ){
+            $path{'tsl_save'} = $path{tsl} . "/saves";
+            print "Found: ".$path{'tsl_save'}."\n";
+        }
+        elsif( -e $path{tsl} . "/Saves" ){
+            $path{'tsl_save'} = $path{tsl} . "/Saves";
+            print "Found: ".$path{'tsl_save'}."\n";
+        }
+        else{
+            print "Could not find save folder.\n";
+        }
+    }
+
+    # Cloudsaves folder
+    $use_tsl_cloud = 0;
+    if( -e $path{'tsl_cloud'} ){
+        $use_tsl_cloud = 1;
+
+    }
+    if(-e $path{tsl} . "\\cloudsaves")
+    {
+        $use_tsl_cloud = 1;
+        opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
+        $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
+        closedir(CLOUDSAVEDIR); # Release handle
+    }
+    else { $use_tsl_cloud = 0; }
+
+    if( $tslfound == 0 ) {
+        print "TSL not found. Attempt using AppData info...\n";
+        my $appdata_obj = MyAppData->new();
+        my $appdata = $appdata_obj->getappdata();
+
+        if(-e $appdata . "/SWKotOR2/saves"){
+            $tslfound = 1;
+            $path{'tsl_save'} = $appdata . "/SWKotOR2/saves";
+        }
+        else{
+            LogIt('KSE failed to find KotOR2 install folder or save dir');
+            $k2_installed=-1;
+        }
+    }
+
+
+
+    # Failed to locate either saves directory, alert the user
+    if($tslfound == 0 && $use_tsl_cloud == 0)
+    {
+        $mw->messageBox(-title=>'Directory not found',
+            -message=>'Could not find saves or Cloud saves for KotOR2',
+            -type=>'Ok');
+
+        LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
+        $k2_installed=-1;
+    }
+
 }
 
 # If not found, ask if it's installed
@@ -437,6 +528,8 @@ if(-e "$workingdir/KSE.ini")
 
 #look for presence of save game folder
 
+
+
 if ($k1_installed == 1)
 {
     unless (opendir SAVDIR, $path{kotor}."/saves") {                                            #saves directory not found
@@ -448,58 +541,10 @@ if ($k1_installed == 1)
     close SAVDIR;
 }
 
-if($k2_installed == 1)
-{
-    my $tslfound = 0; # Local var for checking for save dir finding
 
-    if(-e $path{tsl} . "/saves")
-    {
-        $tslfound = 1;
-        $path{'tsl_save'} = $path{tsl} . "/saves";
-    }
-    elsif(-e $path{tsl} . "/Saves")
-    {
-        $tslfound = 1;
-        $path{'tsl_save'} = $path{tsl} . "/Saves";
-    }
-    else
-    {
-        $tslfound = 0; # Not located, set var to 0 for final pass
-    }
 
-    if($tslfound == 0)
-    {
-        my $appdata_obj = MyAppData->new();
-        my $appdata = $appdata_obj->getappdata();
-
-        if(-e $appdata . "/SWKotOR2/saves")
-        {
-            $tslfound = 1;
-            $path{'tsl_save'} = $appdata . "/SWKotOR2/saves";
-        }
-        else { $tslfound = 0; }
-    }
-
-    # Check if cloudsaves dir can be located
-    if(-e $path{tsl} . "\\cloudsaves")
-    {
-        $use_tsl_cloud = 1;
-        opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
-        $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
-        closedir(CLOUDSAVEDIR); # Release handle
-    }
-    else { $use_tsl_cloud = 0; }
-
-    # Failed to locate either saves directory, alert the user
-    if($tslfound == 0 && $use_tsl_cloud == 0)
-    {
-        $mw->messageBox(-title=>'Directory not found',
-            -message=>'Could not find saves or Cloud saves for KotOR2',
-            -type=>'Ok');
-
-        LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
-        $k2_installed=-1;
-    }
+if( $k2_installed == 1 ) {
+    $k2_installed = initKotor2();
 }
 
 
@@ -601,12 +646,24 @@ MainLoop;
 LogIt ("---------Termination--------\n\n");
 close STDERR;
 
-$path{tsl_save} = $path{tsl} . "\\saves";
 
 open INI, ">", "$workingdir/KSE.ini";
 
-print INI "[Installed]\nK1_Installed=$k1_installed\nK2_Installed=$k2_installed\nTJM_Installed=$tjm_installed\n\n[Paths]\nSteam_Path=$path{'steam'}
-K1_Path=$path{kotor}\nK2_Path=$path{tsl}\nK2_SavePath=$path{tsl_save}\nK2_SavePathCloud=$path{tsl_cloud}\nTJM_Path=undef\n\n[Options]\nUse_K2_Cloud=$use_tsl_cloud";
+print INI "[Installed]\n";
+print INI "K1_Installed=$k1_installed\n";
+print INI "K2_Installed=$k2_installed\n";
+print INI "TJM_Installed=$tjm_installed\n";
+print INI "\n";
+print INI "[Paths]\n";
+print INI "Steam_Path=$path{'steam'}\n";
+print INI "K1_Path=$path{kotor}\n";
+print INI "K2_Path=$path{tsl}\n";
+print INI "K2_SavePath=$path{tsl_save}\n";
+print INI "K2_SavePathCloud=$path{tsl_cloud}\n";
+print INI "TJM_Path=undef\n";
+print INI "\n";
+print INI "[Options]\n";
+print INI "Use_K2_Cloud=$use_tsl_cloud";
 
 close INI;
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
