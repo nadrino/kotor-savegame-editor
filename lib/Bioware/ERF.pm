@@ -8,8 +8,9 @@ require Exporter;
 use vars qw ($VERSION @ISA @EXPORT);
 $VERSION=0.21;
 
-use IO::Uncompress::RawInflate;
 use IO::Uncompress::Inflate;
+use IO::Compress::Deflate qw(deflate $DeflateError) ;
+use IO::File;
 use File::Copy qw(copy);
 use File::Basename;
 use Data::Dumper;
@@ -727,6 +728,25 @@ sub write_erf {
 $r++;
     }
     close $out_fh;
+
+    if( $self->{'isCompressed'} ){
+        my $input = IO::File->new( "<$output_file" )
+          or die "Cannot open '$output_file': $!\n" ;
+        my $buffer ;
+        deflate $input => \$buffer
+          or die "deflate failed: $DeflateError\n";
+
+        open my $outFh, ">", $output_file
+          or die "Unable to open $output_file: $!\n";
+
+        binmode $outFh;
+        syswrite $outFh, "_ASPRCOMP_";
+        syswrite $outFh, $buffer;
+        close $outFh;
+    }
+    else{
+        printf "No need to recompress?\n";
+    }
 
     #if (rename $working_output, $output_file) {
     #    return $total_written;
