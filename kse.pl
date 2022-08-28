@@ -142,7 +142,7 @@ use Tk::TList;
 use Tk::ItemStyle;
 # use Tk::ErrorDialog;
 require Tk::Dialog;
-our $version='v3.4.2';
+our $version='v3.5.0';
 print "KSE ".$version." is starting...\n";
 if ($Tk::VERSION  eq '800.029') { $version .= ' alternate'}
 use Win32::FileOp;
