@@ -730,6 +730,7 @@ $r++;
     close $out_fh;
 
     if( $self->{'isCompressed'} ){
+        print "Recompressing ERF file '".basename($output_file)."'...\n";
         my $input = IO::File->new( "<$output_file" )
           or die "Cannot open '$output_file': $!\n" ;
         my $buffer ;
@@ -743,9 +744,6 @@ $r++;
         syswrite $outFh, "_ASPRCOMP_";
         syswrite $outFh, $buffer;
         close $outFh;
-    }
-    else{
-        printf "No need to recompress?\n";
     }
 
     #if (rename $working_output, $output_file) {

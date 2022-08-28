@@ -12,6 +12,9 @@ use warnings;
 require Exporter;
 use vars qw ($VERSION @ISA @EXPORT);
 
+use IO::Uncompress::Inflate;
+use IO::Compress::Deflate qw(deflate $DeflateError) ;
+use IO::File;
 use File::Copy qw(copy);
 use File::Basename;
 use Win32API::File::Temp;
@@ -144,10 +147,12 @@ sub write_gff3($) {     #same as write_gff2 but uses Win32API::File::Temp
 sub read_gff_file($) {
     my ($gff, $fn)=@_;
     my $fh;
+    $gff->{isCompressed} = 0;
     open my $realfh, "<:raw", $fn
       or die "Unable to open $fn: $!\n";
     read $realfh, my $header, 10;
     if ($header eq "_ASPRCOMP_") {
+        $gff->{isCompressed} = 1;
         printf "Uncompressing GFF: ".basename($fn)."...\n";
         my $inflateHandle = IO::Uncompress::Inflate->new($realfh, AutoClose => 1)
           or die "Unable to open decompression stream!\n";
@@ -194,6 +199,24 @@ sub write_gff_file($;$) {
     else {
         $total_written=$gff->write_gff3($fn);
     }
+
+    if ( $gff->{isCompressed} ){
+        print "Recompressing GFF file '".basename($fn)."'...\n";
+        my $input = IO::File->new( "<$fn" )
+          or die "Cannot open '$fn': $!\n" ;
+        my $buffer ;
+        deflate $input => \$buffer
+          or die "deflate failed: $DeflateError\n";
+
+        open my $outFh, ">", $fn
+          or die "Unable to open $fn: $!\n";
+
+        binmode $outFh;
+        syswrite $outFh, "_ASPRCOMP_";
+        syswrite $outFh, $buffer;
+        close $outFh;
+    }
+
     return $total_written;
 }
 
