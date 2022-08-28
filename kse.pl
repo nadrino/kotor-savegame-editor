@@ -91,10 +91,7 @@
 
 use lib 'lib';
 
-#use strict;
 use feature 'switch';
-# use warnings;
-# use warnings FATAL => 'all';
 use Bioware::GFF 0.64;
 use Bioware::TwoDA 0.14;
 use Bioware::ERF 0.12;
@@ -226,72 +223,72 @@ our %powers_short2;
 our %powers_short3;
 
 our %tsl_npcs=qw(
-    0       Atton
-    1       BaoDur
-    2       Mand
-    3       g0t0
-    4       Handmaiden
-    5       hk47
-    6       Kreia
-    7       Mira
-    8       T3m4
-    9       VisasMarr
-    10      Hanharr
-    11      Disciple);
+  0       Atton
+  1       BaoDur
+  2       Mand
+  3       g0t0
+  4       Handmaiden
+  5       hk47
+  6       Kreia
+  7       Mira
+  8       T3m4
+  9       VisasMarr
+  10      Hanharr
+  11      Disciple);
 
 our %tjm_npcs=qw(
-    0       Atton
-    1       BaoDur
-    2       Mand
-    3       g0t0
-    4       Handmaiden
-    5       hk47
-    6       Kreia
-    7       Tsig
-    8       T3m4
-    9       VisasMarr
-    10      Hanharr
-    11      Disciple);
+  0       Atton
+  1       BaoDur
+  2       Mand
+  3       g0t0
+  4       Handmaiden
+  5       hk47
+  6       Kreia
+  7       Tsig
+  8       T3m4
+  9       VisasMarr
+  10      Hanharr
+  11      Disciple);
 
 our %standard_kotor_npcs=qw (
-    0 Bastila
-    1 Canderous
-    2 Carth
-    3 HK-47
-    4 Jolee
-    5 Juhani
-    6 Mission
-    7 T3M4
-    8 Zaalbar);
+  0 Bastila
+  1 Canderous
+  2 Carth
+  3 HK-47
+  4 Jolee
+  5 Juhani
+  6 Mission
+  7 T3M4
+  8 Zaalbar);
 
 our %standard_tsl_npcs=(
-    0=>'Atton',
-    1=>'Bao Dur',
-    2=>'Mandalore',
-    3=>'G0T0',
-    4=>'Handmaiden',
-    5=>'HK-47',
-    6=>'Kreia',
-    7=>'Mira',
-    8=>'T3M4',
-    9=>'Visas Marr',
-    10=>'Hanharr',
-    11=>'Disciple'
+  0=>'Atton',
+  1=>'Bao Dur',
+  2=>'Mandalore',
+  3=>'G0T0',
+  4=>'Handmaiden',
+  5=>'HK-47',
+  6=>'Kreia',
+  7=>'Mira',
+  8=>'T3M4',
+  9=>'Visas Marr',
+  10=>'Hanharr',
+  11=>'Disciple'
 );
 
 our %standard_tjm_npcs=(
-    0=>'Atton',
-    1=>'Bao Dur',
-    2=>'Mandalore',
-    3=>'G0T0',
-    4=>'Handmaiden',
-    5=>'HK-47',
-    6=>'Kreia',
-    7=>'Tsig',
-    8=>'T3M4',
-    9=>'Visas Marr',
-    10=>'Hanharr',
-    11=>'Disciple'
+  0=>'Atton',
+  1=>'Bao Dur',
+  2=>'Mandalore',
+  3=>'G0T0',
+  4=>'Handmaiden',
+  5=>'HK-47',
+  6=>'Kreia',
+  7=>'Tsig',
+  8=>'T3M4',
+  9=>'Visas Marr',
+  10=>'Hanharr',
+  11=>'Disciple'
 );
 
 our $browsed_path;
@@ -333,14 +330,18 @@ my $image = $mw->Photo(-file => $icon, -format => 'bmp');
 $mw->Icon(-image => $image);
 
 
-our $tree=$mw->ScrlTree(-scrollbars=>'osoe',                                                    #create the tree
-    -separator=>'#',
-    -browsecmd=>\&What,
-    -background=>"#e0e0e0"
+our $tree=$mw->ScrlTree(
+  -scrollbars=>'osoe',                                                    #create the tree
+  -separator=>'#',
+  -browsecmd=>\&What,
+  -background=>"#e0e0e0"
 )->place(-relx=>10/$x,-rely=>10/$y,-relheight=>580/$y,-relwidth=>580/$x);
 $tree->bind('<ButtonPress-3>'=>\&RWhat);
 
 my $versionlabel=$mw->Label(-text=>$version)->place(-relx=>890/$x,-rely=>590/$y,-anchor=>'se'); #create version label
+
+
+
 my $use_tsl_cloud = 0;
 
 # if((-e "$workingdir/KSE.ini") == 0)
@@ -370,39 +371,45 @@ if(-e "$workingdir/KSE.ini") {
         if($line =~ /K2_Path=(.*)/)          { $path{tsl}       = $1; }
         if($line =~ /K2_SavePath=(.*)/)      { $path{tsl_save}  = $1; }
         if($line =~ /K2_SavePathCloud=(.*)/) { $path{tsl_cloud} = $1; }
+        if($line =~ /K2_SavePathSwitch=(.*)/) { $path{tsl_switch} = $1; }
         if($line =~ /TJM_Path=(.*)/)         { $path{tjm}      = $1; }
 
         if($line =~ /Steam_Path=(.*)/)       { $path{steam}     = $1; }
         if($line =~ /Use_K2_Cloud=(.*)/)     { $use_tsl_cloud   = $1; }
     }
     close INI;
+
+    print "INI closed\n";
 }
 
 sub initKotor2{
     print "Initializing kotor 2 path...\n";
 
     # Game folder
-    if( !( -e $path{tsl} ) ){
-        print "Could not find TSL game folder."."\n";
+    if( !( -e $path{tsl}."/chitin.key" ) ){
 
-    unless ($browsed_path=BrowseForFolder('Locate TSL installation directory'))
-    {
-     my $Query=$mw->Dialog(-title=>"Warning",-text=>"You have cancelled out of the folder window.\n You will not be able to edit saved games for KotOR 2.\n Do you wish to proceed?",-font=>['MS Sans Serif','8'],-buttons=>['Yes','No'])->Show();
+        print "TSL not found. Attempt using AppData info...\n";
+        my $appdata_obj = MyAppData->new();
+        my $appdata = $appdata_obj->getappdata();
 
-     if ($Query eq 'No') { $browsed_path=BrowseForFolder('Locate TSL installation directory'); }
-     else
-     {
-         $browsed_path = undef;
-         $k2_installed = -1;
-     }
-    }
+        if( -e $appdata . "/SWKotOR2/chitin.key" ){
+            $path{tsl} = $appdata . "/SWKotOR2";
+            print "Found with appdata: ".$path{tsl}."\n";
+        }
+        else{
+            print "Could not find TSL game folder. Asking user..."."\n";
+            unless ($browsed_path=BrowseForFolder('Locate TSL installation directory')) {
+                print "Path not specified.\n";
+                return -1;
+            }
 
-    if(defined($browsed_path))
-    {
-     if (-e $browsed_path."/chitin.key")   { $k2_installed=1; $path{tsl}=$browsed_path;}
-    }
+            if( -e $browsed_path."/chitin.key" ){ $path{tsl} = $browsed_path; }
+            else{
+                print "Kotor2 path not found.\n";
+                return -1;
+            }
+        }
 
-        return -1;
     }
 
     # Save folder
@@ -439,34 +446,18 @@ sub initKotor2{
     }
     else { $use_tsl_cloud = 0; }
 
-    if( $tslfound == 0 ) {
-        print "TSL not found. Attempt using AppData info...\n";
-        my $appdata_obj = MyAppData->new();
-        my $appdata = $appdata_obj->getappdata();
+    # # Failed to locate either saves directory, alert the user
+    # if($tslfound == 0 && $use_tsl_cloud == 0)
+    # {
+    #     $mw->messageBox(-title=>'Directory not found',
+    #       -message=>'Could not find saves or Cloud saves for KotOR2',
+    #       -type=>'Ok');
+    #
+    #     LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
+    #     return -1;
+    # }
 
-        if(-e $appdata . "/SWKotOR2/saves"){
-            $tslfound = 1;
-            $path{'tsl_save'} = $appdata . "/SWKotOR2/saves";
-        }
-        else{
-            LogIt('KSE failed to find KotOR2 install folder or save dir');
-            $k2_installed=-1;
-        }
-    }
-
-
-
-    # Failed to locate either saves directory, alert the user
-    if($tslfound == 0 && $use_tsl_cloud == 0)
-    {
-        $mw->messageBox(-title=>'Directory not found',
-            -message=>'Could not find saves or Cloud saves for KotOR2',
-            -type=>'Ok');
-
-        LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
-        $k2_installed=-1;
-    }
-
+    return 1;
 }
 
 # If not found, ask if it's installed
@@ -534,7 +525,7 @@ if ($k1_installed == 1)
 {
     unless (opendir SAVDIR, $path{kotor}."/saves") {                                            #saves directory not found
         $mw->messageBox(-title=>'Directory not found',
-            -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
+          -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
         LogIt ('KSE could not find saves directory for KotOR1.' . "\n");
         $k1_installed=0;
     }
@@ -543,15 +534,12 @@ if ($k1_installed == 1)
 
 
 
-if( $k2_installed == 1 ) {
-    $k2_installed = initKotor2();
-}
-
+$k2_installed = initKotor2();
 
 if (-e $path{tjm}."/saves") {
     if(!(opendir SAVDIR3, $path{tjm}."/saves")) {                                             #saves directory not found
         $mw->messageBox(-title=>'Directory not found',
-            -message=>'Could not find saves directory for TJM',-type=>'Ok');
+          -message=>'Could not find saves directory for TJM',-type=>'Ok');
         LogIt ('KSE could not find saves directory for TJM.' . "\n");
         $tjm_installed=0;
     }
@@ -559,11 +547,10 @@ if (-e $path{tjm}."/saves") {
 }
 
 $tree->add('#',-text=>'SAVEGAMES');
-$tree->add('#1',-text=>'Knights of the Old Republic');
-$tree->add('#2',-text=>'The Sith Lords');
-if($use_tsl_cloud == 1) { $tree->add('#3', -text=>'The Sith Lords - Cloud'); }
-if($tjm_installed == 1 && $use_tsl_cloud == 0) { $tree->add('#3',-text=>'The Jedi Masters');}
-if($tjm_installed == 1 && $use_tsl_cloud == 1) { $tree->add('#4',-text=>'The Jedi Masters');}
+$tree->add('#'.(++$tIndex),-text=>'Knights of the Old Republic');
+$tree->add('#'.(++$tIndex),-text=>'The Sith Lords');
+if($use_tsl_cloud == 1) { $tree->add('#'.(++$tIndex), -text=>'The Sith Lords - Cloud'); }
+if($tjm_installed == 1) { $tree->add('#'.(++$tIndex),-text=>'The Jedi Masters');}
 
 #{
 #my $z0='861682243909523251';
@@ -591,13 +578,6 @@ if($tjm_installed == 1 && $use_tsl_cloud == 1) { $tree->add('#4',-text=>'The Jed
 #}
 #}
 
-# last check before beginning...
-unless ($k1_installed || $k2_installed) {
-    $mw->messageBox(-title=>'Termination',
-        -message=>'No save games to edit!  Termination.',-type=>'Ok');
-    LogIt ('KSE could not find any save games to edit.  Termination.' . "\n");
-    exit;
-}
 
 if ($k1_installed) {LogIt ('KSE found KotOR1 saves directory in ' . $path{kotor} . "\n")}
 if ($k2_installed) {LogIt ('KSE found KotOR2 saves directory in ' . $path{tsl_save} . "\n")}
@@ -1674,13 +1654,13 @@ sub Populate_Classes {
     my $i=0;
     for my $class_struct (@class_structs) {
         $tree->add($treeitem."#Class$i",
-            -text=>$classes{$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('Class')]{'Value'}},-data=>'can modify');
+          -text=>$classes{$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('Class')]{'Value'}},-data=>'can modify');
         $tree->add($treeitem."#Class$i#Level",
-            -text=>'Level: '.$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'},
-            -data=>'can modify'
+          -text=>'Level: '.$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'},
+          -data=>'can modify'
         );
         LogIt ("-- ".$classes{$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('Class')]{'Value'}}." Level: "
-            . $class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'});
+          . $class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'});
         $tree->hide('entry',$treeitem."#Class$i#Level");
         my $knownlist0_ix=$class_struct->get_field_ix_by_label('KnownList0');
 
@@ -1689,8 +1669,8 @@ sub Populate_Classes {
             my @power_structs=@{$class_struct->{'Fields'}[$knownlist0_ix]{'Value'}};
             for my $power_struct (@power_structs) {
                 $tree->add($treeitem."#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}},
-                    -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
-                    -data=>'can modify');
+                  -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
+                  -data=>'can modify');
                 $tree->hide('entry',$treeitem."#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}});
                 LogIt ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
             }
@@ -1874,11 +1854,11 @@ sub Current_Party{
         my $avail_npc_struct=$$pt_avail_npcs_arr_ref[$std_npc];
         $vals[$std_npc]=0;
         $widges[$std_npc]=$mw->Checkbutton(-text=>$standard_npcs{$std_npc},-variable=>\$vals[$std_npc],
-            -command=>sub { if ($vals[$std_npc]==1) {
-                my $sum;
-                for my $val (@vals) { $sum += $val }
-                if ($sum > 2) { $vals[$std_npc]=0 }
-            } }
+          -command=>sub { if ($vals[$std_npc]==1) {
+              my $sum;
+              for my $val (@vals) { $sum += $val }
+              if ($sum > 2) { $vals[$std_npc]=0 }
+          } }
         )->place(-relx=>650/$x,-rely=>(100+(30*$std_npc))/$y);
         push @spawned_widgets, $widges[$std_npc];
         unless ($avail_npc_struct->{Fields}[$avail_npc_struct->fbl('PT_NPC_AVAIL')]{Value}) {
@@ -2177,15 +2157,15 @@ sub Populate_NPC{
     $tree->add($treeitem."#Skills",-text=>"Skills");
     for (my $i=0; $i<=7; $i++) {
         $tree->add($treeitem."#Skills#Skill$i",
-            -text=>"$skills{$i}: " . $skill_structs->[$i]{'Fields'}{'Value'},
-            -data=>'can modify');
+          -text=>"$skills{$i}: " . $skill_structs->[$i]{'Fields'}{'Value'},
+          -data=>'can modify');
         $tree->hide('entry',$treeitem."#Skills#Skill$i");
     }
     $tree->add($treeitem."#Feats",-text=>"Feats",-data=>'can modify');
     for my $featstruct (@$feat_structs) {
         $tree->add($treeitem."#Feats#Feat".$feats_full{label}{$featstruct->{'Fields'}{'Value'}},
-            -text=>$feats_full{name}{$featstruct->{'Fields'}{'Value'}},
-            -data=>'can modify');
+          -text=>$feats_full{name}{$featstruct->{'Fields'}{'Value'}},
+          -data=>'can modify');
         $tree->hide('entry',$treeitem."#Feats#Feat".$feats_full{label}{$featstruct->{'Fields'}{'Value'}});
     }
     $tree->add($treeitem."#Classes",-text=>"Classes");
@@ -2202,8 +2182,8 @@ sub Populate_NPC{
             my @power_structs=@{$classstruct->{'Fields'}[$knownlist0_ix]{'Value'}};
             for my $power_struct (@power_structs) {
                 $tree->add($treeitem."#Classes#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}},
-                    -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
-                    -data=>'can modify');
+                  -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
+                  -data=>'can modify');
                 $tree->hide('entry',$treeitem."#Classes#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}});
                 LogIt ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
             }
@@ -2294,9 +2274,9 @@ sub Populate_AreaContainer{
 
             print "  ".$containerDisplayTitle."\n";
             $tree->add(
-                $treeItem."#".$iContainer."_".$containerTag,
-                -text=>$containerDisplayTitle,
-                -data=>'can modify'
+              $treeItem."#".$iContainer."_".$containerTag,
+              -text=>$containerDisplayTitle,
+              -data=>'can modify'
             );
 
             my $iItem=0;
@@ -2304,7 +2284,7 @@ sub Populate_AreaContainer{
             foreach(@$itemList){
 
                 if( 	$containerType eq 'Creatures'
-                    and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
+                  and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
                     # skip
                     next;
                 }
@@ -2333,9 +2313,9 @@ sub Populate_AreaContainer{
         else{
             if($containerType eq 'Doors'){
                 $tree->add(
-                    $treeItem."#".$iContainer."_".$containerTag,
-                    -text=>$containerDisplayTitle,
-                    -data=>'can modify'
+                  $treeItem."#".$iContainer."_".$containerTag,
+                  -text=>$containerDisplayTitle,
+                  -data=>'can modify'
                 );
             }
             else{
@@ -2372,7 +2352,7 @@ sub SpawnWidgets{
 
     eval {$picture_label_photo->delete};
     my $use_generic_widgets=join '#', ('z', qw (
-        STR DEX WIS CON INT CHA HitPoints MaxHitPoints ForcePoints MaxForcePoints Experience GoodEvil XPosition YPosition ZPosition Level),'z');
+      STR DEX WIS CON INT CHA HitPoints MaxHitPoints ForcePoints MaxForcePoints Experience GoodEvil XPosition YPosition ZPosition Level),'z');
 
     my $lastleaf=(split /#/, $treeitem)[-1];
     my ($ifo_gff,$res_gff,$pty_gff,$inv_gff,$git_gff);
@@ -2718,9 +2698,9 @@ sub CommitChanges {
             $authkey=pack('C16',0x67,0x77,0x01,0x4b,0xb4,0xad,0xe4,0x21,0x8b,0x3d,0x98,0x67,0xa8,0xba,0x76,0x3c);
         }
         my %gff_to_sig=qw(partytable.res SAVE_PARTY.sig
-            globalvars.res SAVE_VARS.sig
-            savenfo.res    SAVE_INFO.sig
-            screen.tga     Screen.sig);
+          globalvars.res SAVE_VARS.sig
+          savenfo.res    SAVE_INFO.sig
+          screen.tga     Screen.sig);
         for my $f (keys %gff_to_sig) {
             next unless -e "$registered_path\\$gamedir\\$f";
             local $/;
@@ -2753,14 +2733,14 @@ sub CommitChanges {
         my $tmp;
         sysread $fh,$tmp,36;
         ($self{'localized_string_count'},
-            $self{'localized_string_size'},
-            $self{'entry_count'},
-            $self{'offset_to_localized_string'},
-            $self{'offset_to_key_list'},
-            $self{'offset_to_resource_list'},
-            $self{'build_year'},
-            $self{'build_day'},
-            $self{'description_str_ref'})=unpack('V9',$tmp);
+          $self{'localized_string_size'},
+          $self{'entry_count'},
+          $self{'offset_to_localized_string'},
+          $self{'offset_to_key_list'},
+          $self{'offset_to_resource_list'},
+          $self{'build_year'},
+          $self{'build_day'},
+          $self{'description_str_ref'})=unpack('V9',$tmp);
 
         sysseek $fh,160,0;
         sysread $fh,$headervardata,$self{'offset_to_resource_list'}+(8*$self{'entry_count'})-160;
@@ -2956,13 +2936,13 @@ sub SpawnAddFeatWidgets {
 
     #my $featlist= $mw->Scrolled('Listbox',
     Tk::Autoscroll::Init(my $featlist= $mw->Scrolled('TList',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#D07000',
-        -selectmode=>'extended',
-        -itemtype=>'text',
-        -orient=>'horizontal'
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#D07000',
+      -selectmode=>'extended',
+      -itemtype=>'text',
+      -orient=>'horizontal'
     ));
     $featlist->place(-relx=>600/$x,-rely=>100/$y,-relwidth=>270/$x,-relheight=>400/$y);
 
@@ -3060,7 +3040,7 @@ sub SpawnAddFeatWidgets {
             }
             LogIt ("Successful addition of feat: $selected_feat.");
             $tree->add("$newtreepath#Feats#Feat$lbl",
-                -text=>$selected_feat,-data=>'can modify');
+              -text=>$selected_feat,-data=>'can modify');
             $featlist->entryconfigure($selected_index,-style=>$newstyle);
         }
     }
@@ -3120,22 +3100,22 @@ sub SpawnAddFeatWidgets {
     push @spawned_widgets,$btn4;
 
     my $chkbtn=$mw->Checkbutton(-text=>'Show all feats/powers',
-        -variable=>\$short_or_long,
-        -command=> sub {
-            %feats=$short_or_long ? %feats_full : %feats_short;
-            %revhash_name= reverse %{$feats{name}};
-            $featlist->delete(0,'end');
-            for (sort keys %revhash_name) {   # $_ will hold our feats' name
-                my $ix=$revhash_name{$_};
-                my $lbl=$feats{label}{$ix};
-                if ($tree->info('exists',"$newtreepath#Feats#Feat".$lbl)) {
-                    $featlist->insert('end',-text=>$_,-style=>$newstyle);
-                }
-                else {
-                    $featlist->insert('end',-text=>$_);
-                }
-            }
-        }
+      -variable=>\$short_or_long,
+      -command=> sub {
+          %feats=$short_or_long ? %feats_full : %feats_short;
+          %revhash_name= reverse %{$feats{name}};
+          $featlist->delete(0,'end');
+          for (sort keys %revhash_name) {   # $_ will hold our feats' name
+              my $ix=$revhash_name{$_};
+              my $lbl=$feats{label}{$ix};
+              if ($tree->info('exists',"$newtreepath#Feats#Feat".$lbl)) {
+                  $featlist->insert('end',-text=>$_,-style=>$newstyle);
+              }
+              else {
+                  $featlist->insert('end',-text=>$_);
+              }
+          }
+      }
     )->place(-relx=>590/$x,-rely=>590/$y, -anchor=>'sw');
     push @spawned_widgets,$chkbtn;
 }
@@ -3337,14 +3317,14 @@ sub SpawnAddPowerWidgets {
     push @spawned_widgets,$label;
     #my $powerlist= $mw->Scrolled('Listbox',
     Tk::Autoscroll::Init(my $powerlist= $mw->Scrolled('TList',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#A000C0',
-        -selectmode=>'extended',
-        -itemtype=>'text',
-        -orient=>'horizontal'
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#A000C0',
+      -selectmode=>'extended',
+      -itemtype=>'text',
+      -orient=>'horizontal'
     ));
     $powerlist->place(-relx=>600/$x,-rely=>100/$y,-relwidth=>270/$x,-relheight=>400/$y);
 
@@ -3456,7 +3436,7 @@ sub SpawnAddPowerWidgets {
             }
             LogIt ("Successful.");
             $tree->add("$newtreepath#KnownList0#Power$lbl",
-                -text=>$selected_power,-data=>'can modify');
+              -text=>$selected_power,-data=>'can modify');
             $powerlist->entryconfigure($selected_index,-style=>$newstyle);
         }
     } )->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>90/$x);
@@ -3527,22 +3507,22 @@ sub SpawnAddPowerWidgets {
 
 
     my $chkbtn=$mw->Checkbutton(-text=>'Show all feats/powers',
-        -variable=>\$short_or_long,
-        -command=> sub {
-            %powers=$short_or_long ?  %powers_full : %powers_short;
-            %revhash_name= reverse %{$powers{name}};
-            $powerlist->delete(0,'end');
-            for (sort keys %revhash_name) {  #  $_ has our powers' names
-                my $ix=$revhash_name{$_};
-                my $lbl=$powers{label}{$ix};
-                if ($tree->info('exists',"$newtreepath#KnownList0#Power".$lbl)) {
-                    $powerlist->insert('end',-text=>$_,-style=>$newstyle);
-                }
-                else {
-                    $powerlist->insert('end',-text=>$_);
-                }
-            }
-        }
+      -variable=>\$short_or_long,
+      -command=> sub {
+          %powers=$short_or_long ?  %powers_full : %powers_short;
+          %revhash_name= reverse %{$powers{name}};
+          $powerlist->delete(0,'end');
+          for (sort keys %revhash_name) {  #  $_ has our powers' names
+              my $ix=$revhash_name{$_};
+              my $lbl=$powers{label}{$ix};
+              if ($tree->info('exists',"$newtreepath#KnownList0#Power".$lbl)) {
+                  $powerlist->insert('end',-text=>$_,-style=>$newstyle);
+              }
+              else {
+                  $powerlist->insert('end',-text=>$_);
+              }
+          }
+      }
     )->place(-relx=>590/$x,-rely=>590/$y, -anchor=>'sw');
     push @spawned_widgets,$chkbtn;
 }
@@ -3553,11 +3533,11 @@ sub SpawnGenericWidgets {
     my ($treeitem,$cur_trait,$cur_rank,$ifo_gff_ref)=@_;
     my $gameversion=(split /#/,$treeitem)[1];
     my %traithash=('STR'=>'Str',
-        'DEX'=>'Dex',
-        'INT'=>'Int',
-        'WIS'=>'Wis',
-        'CON'=>'Con',
-        'CHA'=>'Cha');
+      'DEX'=>'Dex',
+      'INT'=>'Int',
+      'WIS'=>'Wis',
+      'CON'=>'Con',
+      'CHA'=>'Cha');
 
     unless (exists $traithash{$cur_trait}) { $traithash{$cur_trait}=$cur_trait }  #this is so our cur_trait matches up with the appropriate GFF label
     if ($treeitem =~/NPCs/) {
@@ -3670,7 +3650,7 @@ sub SpawnPartyWidgets {
     #>>>>>>>>>>>>>>>>>>>>>>>>
     my ($treeitem,$cur_trait,$cur_rank,$pty_gff_ref)=@_;
     my %traithash = ('Credits'=>'PT_GOLD', 'Party XP'=>'PT_XP_POOL',
-        'Influence'=>'PT_INFLUENCE','Chemicals'=>'PT_ITEM_CHEMICAL','Components'=>'PT_ITEM_COMPONEN');
+      'Influence'=>'PT_INFLUENCE','Chemicals'=>'PT_ITEM_CHEMICAL','Components'=>'PT_ITEM_COMPONEN');
     my $npc_num; #for influence only
     if ($cur_trait eq 'Influence') {
         $treeitem=~/(.*#NPCs#.*?)#/;
@@ -3868,9 +3848,9 @@ sub SpawnTimePlayedWidgets {
     $txts->bind('<Return>'=> sub {
         my $newtime=$new_seconds+(60*$new_minutes)+(3600*$new_hours);
         $tree->entryconfigure($treeitem,-text=>'Time Played: '.
-            (sprintf "%uh ",($newtime/3600)).
-            (sprintf "%um ",(($newtime % 3600)/60)).
-            (sprintf "%us",($newtime % 60)));
+          (sprintf "%uh ",($newtime/3600)).
+          (sprintf "%um ",(($newtime % 3600)/60)).
+          (sprintf "%us",($newtime % 60)));
         LogIt("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
@@ -3878,9 +3858,9 @@ sub SpawnTimePlayedWidgets {
     $txth->bind('<Return>'=> sub {
         my $newtime=$new_seconds+(60*$new_minutes)+(3600*$new_hours);
         $tree->entryconfigure($treeitem,-text=>'Time Played: '.
-            (sprintf "%uh ",($newtime/3600)).
-            (sprintf "%um ",(($newtime % 3600)/60)).
-            (sprintf "%us",($newtime % 60)));
+          (sprintf "%uh ",($newtime/3600)).
+          (sprintf "%um ",(($newtime % 3600)/60)).
+          (sprintf "%us",($newtime % 60)));
         LogIt("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
@@ -3888,9 +3868,9 @@ sub SpawnTimePlayedWidgets {
     $txtm->bind('<Return>'=> sub {
         my $newtime=$new_seconds+(60*$new_minutes)+(3600*$new_hours);
         $tree->entryconfigure($treeitem,-text=>'Time Played: '.
-            (sprintf "%uh ",($newtime/3600)).
-            (sprintf "%um ",(($newtime % 3600)/60)).
-            (sprintf "%us",($newtime % 60)));
+          (sprintf "%uh ",($newtime/3600)).
+          (sprintf "%um ",(($newtime % 3600)/60)).
+          (sprintf "%us",($newtime % 60)));
         LogIt("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
@@ -3898,9 +3878,9 @@ sub SpawnTimePlayedWidgets {
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         my $newtime=$new_seconds+(60*$new_minutes)+(3600*$new_hours);
         $tree->entryconfigure($treeitem,-text=>'Time Played: '.
-            (sprintf "%uh ",($newtime/3600)).
-            (sprintf "%um ",(($newtime % 3600)/60)).
-            (sprintf "%us",($newtime % 60)));
+          (sprintf "%uh ",($newtime/3600)).
+          (sprintf "%um ",(($newtime % 3600)/60)).
+          (sprintf "%us",($newtime % 60)));
         LogIt("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     }
@@ -3987,16 +3967,16 @@ sub SpawnBooleanWidgets {
         LogIt("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my $bitstring
-            =unpack('B*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValBoolean')]{Value});
+          =unpack('B*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValBoolean')]{Value});
         substr($bitstring,$ix_into_gff,1)=$curval;
         $$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValBoolean')]{Value}
-            =pack('B*',$bitstring);
+          =pack('B*',$bitstring);
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btn1;
 
     my $btn2=$mw->Button(-text=>"Commit Changes",
-        -command=>sub {
-            CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+      -command=>sub {
+          CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
     push @spawned_widgets,$btn2;
 }
 #>>>>>>>>>>>>>>>>>>>>>>>>
@@ -4018,10 +3998,10 @@ sub SpawnNumericWidgets {
         LogIt("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my @bytevalues
-            =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
+          =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
         $bytevalues[$ix_into_gff]=$curval;
         $$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value}
-            =pack('C*',@bytevalues);
+          =pack('C*',@bytevalues);
     });
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
@@ -4029,16 +4009,16 @@ sub SpawnNumericWidgets {
         LogIt("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my @bytevalues
-            =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
+          =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
         $bytevalues[$ix_into_gff]=$curval;
         $$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value}
-            =pack('C*',@bytevalues);
+          =pack('C*',@bytevalues);
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btn1;
 
     my $btn2=$mw->Button(-text=>"Commit Changes",
-        -command=>sub {
-            CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+      -command=>sub {
+          CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
     push @spawned_widgets,$btn2;
 }
 
@@ -4104,8 +4084,8 @@ sub SpawnGenderWidgets {
     push @spawned_widgets,$btn1;
 
     my $btn2=$mw->Button(-text=>"Commit Changes",
-        -command=>sub {
-            CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+      -command=>sub {
+          CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
     push @spawned_widgets,$btn2;
 }
 
@@ -4168,11 +4148,11 @@ sub SpawnChangeClassWidgets {
     push @spawned_widgets,$lbl;
 
     Tk::Autoscroll::Init(my $classlist= $mw->Scrolled('Listbox',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#009000',
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#009000',
     ));
     $classlist->place(-relx=>600/$x,-rely=>100/$y,-relwidth=>270/$x,-relheight=>200/$y);
 
@@ -4185,7 +4165,7 @@ sub SpawnChangeClassWidgets {
         my $newclassvalue=$revhash{$classlist->get($cur_list_index)};
         my $oldclassvalue=$revhash{($tree->entrycget($treeitem,-text))};
         LogIt ("Changing class from " .($tree->entrycget($treeitem,-text)). " ($oldclassvalue) to " .
-            $classlist->get($cur_list_index) . " ($newclassvalue)");
+          $classlist->get($cur_list_index) . " ($newclassvalue)");
 
         #get the struct in question
 
@@ -4205,7 +4185,7 @@ sub SpawnChangeClassWidgets {
         #handle non-jedi -> jedi change
 
         if ( (exists $spellcasters{$newclassvalue}) &&    #new class is a spell caster
-            !(exists $spellcasters{$oldclassvalue}) ){    #old class was not -- need to configure
+          !(exists $spellcasters{$oldclassvalue}) ){    #old class was not -- need to configure
             LogIt('Adding power list');
             my $sub_struct=Bioware::GFF::Struct->new('ID'=>17767);
             $sub_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NumSpellsLeft','Value'=>0);
@@ -4217,13 +4197,13 @@ sub SpawnChangeClassWidgets {
             #handle jedi -> non-jedi change
 
         } elsif ( !(exists $spellcasters{$newclassvalue}) &&     #new class is not a spell caster
-            (exists $spellcasters{$newclassvalue}) ){     #but old class was -- need to configure
+          (exists $spellcasters{$newclassvalue}) ){     #but old class was -- need to configure
             LogIt ('Removing power list');
             my $ix=0;
             my @newfields=();
             for my $classfield (@{$class_struct->{Fields}}) {
                 unless ( ($ix=$class_struct->get_field_ix_by_label('KnownList0')) ||
-                    ($ix=$class_struct->get_field_ix_by_label('SpellsPerDayList')) ) {
+                  ($ix=$class_struct->get_field_ix_by_label('SpellsPerDayList')) ) {
                     push @newfields,$classfield;
                 }
                 $ix++;
@@ -4403,12 +4383,12 @@ sub SpawnAppearanceWidgets {
     push @spawned_widgets,$lbl;
 
     Tk::Autoscroll::Init(my $appearancelist= $mw->Scrolled('Listbox', ###HIHIHI
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#009000',
-        -selectmode=>'extended',
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#009000',
+      -selectmode=>'extended',
     ));
     $appearancelist->place(-relx=>600/$x,-rely=>120/$y,-relwidth=>270/$x,-relheight=>380/$y);
 
@@ -4421,7 +4401,7 @@ sub SpawnAppearanceWidgets {
         my $newappearancevalue=$revhash{$appearancelist->get($cur_list_index)};
         my $oldappearancevalue=$revhash{$cur_appearance_name};
         LogIt ("Changing appearance from $cur_appearance_name  ($oldappearancevalue) to " .
-            $appearancelist->get($cur_list_index) . " ($newappearancevalue)");
+          $appearancelist->get($cur_list_index) . " ($newappearancevalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Appearance: " . ($appearancelist->get($cur_list_index)));
         if ($treeitem=~/NPCs/) {
@@ -4501,12 +4481,12 @@ sub SpawnPortraitWidgets {
     push @spawned_widgets,$lbl;
 
     Tk::Autoscroll::Init(my $portraitlist= $mw->Scrolled('Listbox',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#009000',
-        -selectmode=>'extended'
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#009000',
+      -selectmode=>'extended'
     ));
     $portraitlist->place(-relx=>600/$x,-rely=>120/$y,-relwidth=>270/$x,-relheight=>380/$y);
 
@@ -4554,7 +4534,7 @@ sub SpawnPortraitWidgets {
         my $newportraitvalue=$revhash{$portraitlist->get($cur_list_index)};
         my $oldportraitvalue=$revhash{$cur_portrait_name};
         LogIt ("Changing appearance from $cur_portrait_name ($oldportraitvalue) to " .
-            $portraitlist->get($cur_list_index) . " ($newportraitvalue)");
+          $portraitlist->get($cur_list_index) . " ($newportraitvalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Portrait: " . ($portraitlist->get($cur_list_index)));
         if ($treeitem=~/NPCs/) {
@@ -4620,12 +4600,12 @@ sub SpawnSoundsetWidgets {
     push @spawned_widgets,$lbl;
 
     Tk::Autoscroll::Init(my $soundsetlist= $mw->Scrolled('Listbox',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#009000',
-        -selectmode=>'extended',
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#009000',
+      -selectmode=>'extended',
     ));
     $soundsetlist->place(-relx=>600/$x,-rely=>120/$y,-relwidth=>270/$x,-relheight=>380/$y);
 
@@ -4638,7 +4618,7 @@ sub SpawnSoundsetWidgets {
         my $newsoundsetvalue=$revhash{$soundsetlist->get($cur_list_index)};
         my $oldsoundsetvalue=$revhash{$cur_soundset_name};
         LogIt ("Changing soundset from $cur_soundset_name ($oldsoundsetvalue) to " .
-            $soundsetlist->get($cur_list_index) . " ($newsoundsetvalue)");
+          $soundsetlist->get($cur_list_index) . " ($newsoundsetvalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Soundset: " . ($soundsetlist->get($cur_list_index)));
         if ($treeitem=~/NPCs/) {
@@ -4769,8 +4749,8 @@ sub SpawnDoorWidgets {
     push @spawned_widgets,$btnApply;
 
     $btnCommit=$mw->Button(-text=>"Commit Changes",
-        -command=>sub {
-            CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+      -command=>sub {
+          CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
     push @spawned_widgets,$btnCommit;
 
 }
@@ -5099,8 +5079,8 @@ sub SpawnInventoryWidgets {
     push @spawned_widgets,$btn1;
 
     $btnCommit=$mw->Button(-text=>"Commit Changes",
-        -command=>sub {
-            CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
+      -command=>sub {
+          CommitChanges($treeitem) })->place(-relx=>870/$x,-rely=>520/$y,-anchor=>'ne');
     # push @spawned_widgets,$btn2;
     push @spawned_widgets,$btnCommit;
 }
@@ -5240,8 +5220,8 @@ sub SpawnAddInventoryWidgets {
         my $desc=$master_item_list{$key}{'desc'};
         $desc=~s/\n/ /g;    #get rid of any new line chars
         my $lilhash={'itemtext'=>sprintf("%-18s%-18s%s",$key,$master_item_list{$key}{'tag'},$desc),
-            'override'=>$master_item_list{$key}{'override'},
-            'possessed'=>$possessed{$master_item_list{$key}{'tag'}}
+          'override'=>$master_item_list{$key}{'override'},
+          'possessed'=>$possessed{$master_item_list{$key}{'tag'}}
         };
         if ($lilhash->{'override'}) { LogIt "override: itemtext: $$lilhash{'itemtext'} ### $key # $master_item_list{$key}{'tag'} # $desc" }
 
@@ -5256,32 +5236,32 @@ sub SpawnAddInventoryWidgets {
     }
 
     Tk::Autoscroll::Init(my $templatelist= $mw->Scrolled('TList',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectborderwidth=>'0',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#B0B0B0',
-        -selectmode=>'extended',
-        -itemtype=>'text',
-        -takefocus=>1,
-        -font=>['Lucida Console','8'],
-        -orient=>'horizontal',
-        -pady=>0
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectborderwidth=>'0',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#B0B0B0',
+      -selectmode=>'extended',
+      -itemtype=>'text',
+      -takefocus=>1,
+      -font=>['Lucida Console','8'],
+      -orient=>'horizontal',
+      -pady=>0
 
     ));
     $templatelist->place(-relx=>600/$x,-rely=>120/$y,-relwidth=>270/$x,-relheight=>380/$y);
 
     my $overridestyle = $mw->ItemStyle('text',
-        -foreground=>'#FF4040',
-        -selectforeground=>'#A00000',
-        -selectbackground=>'#B0B0B0',
-        -font=>['Lucida Console','8']);
+      -foreground=>'#FF4040',
+      -selectforeground=>'#A00000',
+      -selectbackground=>'#B0B0B0',
+      -font=>['Lucida Console','8']);
     my $pstylefg='#4040FF';
     my $possessedstyle = $mw->ItemStyle('text',
-        -foreground=>$pstylefg,
-        -selectforeground=>'#0000A0',
-        -selectbackground=>'#B0B0B0',
-        -font=>['Lucida Console','8']);
+      -foreground=>$pstylefg,
+      -selectforeground=>'#0000A0',
+      -selectbackground=>'#B0B0B0',
+      -font=>['Lucida Console','8']);
     my $underlinedstyle=$mw->ItemStyle('text',-font=>['Lucida Console','8','underline']);
 
     $templatelist->insert('end',-text=>sprintf("%-18s%-18s%s","TemplateResRef","Tag","Description"),-style=>$underlinedstyle);
@@ -5548,7 +5528,7 @@ sub SpawnAddInventoryWidgets {
 
                 # Look for extra vars that could have been missed
                 if (defined($uti_gff->{Main}->get_field_ix_by_label('TextureVar'))
-                    and !defined($newItemStruct->get_field_ix_by_label('TextureVar'))) {
+                  and !defined($newItemStruct->get_field_ix_by_label('TextureVar'))) {
                     # print "Adding TextureVar...\n";
                     push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label('TextureVar')];
                 }
@@ -5699,8 +5679,8 @@ sub Generate_Master_Item_List {
         }
 
         my ($droidheads, $droidarmor, $droidarms, $droidbelts, $droidimplants,
-            $humanheads, $humanarmor, $humanarms, $humanbelts, $humanimplants,
-            $humangloves, $weaponsmelee, $weaponsranged);
+          $humanheads, $humanarmor, $humanarms, $humanbelts, $humanimplants,
+          $humangloves, $weaponsmelee, $weaponsranged);
 
         # now get all uti files from templates.bif
         my $bif=Bioware::BIF->new($registered_path,undef,'uti');
@@ -6053,27 +6033,27 @@ sub RWhat {
 
     #create Inventory Popup Menu
     my $inventoryMenu = $mw->Menu(
-        -tearoff  => 0);
+      -tearoff  => 0);
 
     # Note: for some reason, the -command parameter of these menu buttons
     # has to be in the form of sub { function } rather than \&function
     # otherwise the function will be called immediately upon insert method... :-s
 
     $inventoryMenu->insert(0,
-        'command',
-        -label=>'Reload This Savegame',
-        -command=>sub { Reload($treeroot)},
-        -state=>'normal');
+      'command',
+      -label=>'Reload This Savegame',
+      -command=>sub { Reload($treeroot)},
+      -state=>'normal');
     $inventoryMenu->insert(1,
-        'command',
-        -label=>'Copy Inventory From This Savegame',
-        -command=>sub { CopyInventory($treeitem,$datahash) },
-        -state=>'normal');
+      'command',
+      -label=>'Copy Inventory From This Savegame',
+      -command=>sub { CopyInventory($treeitem,$datahash) },
+      -state=>'normal');
     $inventoryMenu->insert(2,
-        'command',
-        -label=>'Paste Inventory Into This Savegame',
-        -command=>sub { PasteInventory($treeroot,$datahash) },
-        -state=>'disabled');
+      'command',
+      -label=>'Paste Inventory Into This Savegame',
+      -command=>sub { PasteInventory($treeroot,$datahash) },
+      -state=>'disabled');
     #    $inventoryMenu->insert(3,
     #                           'command',
     #                           -label=>'Copy Globals From This Savegame',
@@ -6093,8 +6073,8 @@ sub RWhat {
     #    }
     #show popup at cursor
     $inventoryMenu->Popup(
-        -popover  => 'cursor',
-        -popanchor => 'nw');
+      -popover  => 'cursor',
+      -popanchor => 'nw');
 
 }
 
@@ -6178,6 +6158,9 @@ sub LoadData {
     }
 
     my $lastModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
+    if ($lastModuleName eq ""){
+        die ("Could not fetch last module name in ".$res_gff->{Main}{Fields});
+    }
 
     my $pty_gff=Bioware::GFF->new();
     unless (my $tmp=$pty_gff->read_gff_file("$registered_path\\$gamedir\\partytable.res")) {
@@ -6242,16 +6225,16 @@ sub LoadData {
     $gff_LastModGit->{'modulename'}="$lastModuleGitName";
 
     $tree->entryconfigure(
-        $root,
-        -data=>{
-            'ERF-sav'=>$erf,
-            'ERF-mod'=>$erfLastModSav,
-            'GFF-pty'=>$pty_gff,
-            'GFF-res'=>$res_gff,
-            'GFF-ifo'=>$gff_LastModIfo,
-            'GFF-git'=>$gff_LastModGit,
-            'GFF-inv'=>$gff_inv
-        }
+      $root,
+      -data=>{
+        'ERF-sav'=>$erf,
+        'ERF-mod'=>$erfLastModSav,
+        'GFF-pty'=>$pty_gff,
+        'GFF-res'=>$res_gff,
+        'GFF-ifo'=>$gff_LastModIfo,
+        'GFF-git'=>$gff_LastModGit,
+        'GFF-inv'=>$gff_inv
+      }
     );
     print "Data loaded.\n";
 }
@@ -6274,7 +6257,7 @@ sub PrintScreenshot {
         $img->write(data=>\$buf,type=>$ftyp) or die $img->errstr; ;
         $picture_label_photo=$mw->Photo(-data=>encode_base64($buf),-format=>$ftyp);
         $picture_label=$mw->Label(
-            -image=>$picture_label_photo
+          -image=>$picture_label_photo
         )->pack(-side=>'top',-anchor=>'ne');
 
     }
@@ -6325,9 +6308,9 @@ sub CopyInventory {
 
     #tell user we're done
     my $ok=$mw->Dialog(-title=>'Inventory Copied to Memory',
-        -text=>"Inventory from $treeitem_desc\n '$inventory_source_savegame_name'\n has been copied into memory.",
-        -font=>['MS Sans Serif','8'],
-        -buttons=>['Ok'])->Show();
+      -text=>"Inventory from $treeitem_desc\n '$inventory_source_savegame_name'\n has been copied into memory.",
+      -font=>['MS Sans Serif','8'],
+      -buttons=>['Ok'])->Show();
 }
 sub PasteInventory {
     my ($treeitem_destination,$datahash)=@_;
@@ -6338,9 +6321,9 @@ sub PasteInventory {
     my $inventory_destination_savegame_name=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('SAVEGAMENAME')]{Value};
 
     my $confirm=$mw->Dialog(-title=>'Confirm Inventory Paste',
-        -text=>"Are you sure you wish to Paste the Inventory from\n$treeitem_src_desc  '$inventory_source_savegame_name'\nto\n$treeitem_desc  '$inventory_destination_savegame_name'?",
-        -font=>['MS Sans Serif','8'],
-        -buttons=>['Yes','No'])->Show();
+      -text=>"Are you sure you wish to Paste the Inventory from\n$treeitem_src_desc  '$inventory_source_savegame_name'\nto\n$treeitem_desc  '$inventory_destination_savegame_name'?",
+      -font=>['MS Sans Serif','8'],
+      -buttons=>['Yes','No'])->Show();
     if ($confirm eq 'Yes') {
         $datahash->{'GFF-inv'}=$inventory_memorized;
         $tree->entryconfigure($treeitem_destination,-data=>$datahash);
@@ -6360,93 +6343,93 @@ sub change_registered_path {
 
     #create confirmation popup
     my $change_path_confirm_menu = $mw->Menu(
-        -tearoff  => 0);
+      -tearoff  => 0);
 
     $change_path_confirm_menu->insert(0,
-        'command',
-        -label=>'Change Path for '.$gamename,
-        -accelerator=>'Ctrl+P',
-        -command=>sub {
-            my $browsed_path=BrowseForFolder('Locate '.$gamename.' installation directory');
-            if ($browsed_path) {
-                if ($which_game==1) {
-                    $oldpath{kotor}=$path{kotor};
-                    $path{kotor}=$browsed_path;
+      'command',
+      -label=>'Change Path for '.$gamename,
+      -accelerator=>'Ctrl+P',
+      -command=>sub {
+          my $browsed_path=BrowseForFolder('Locate '.$gamename.' installation directory');
+          if ($browsed_path) {
+              if ($which_game==1) {
+                  $oldpath{kotor}=$path{kotor};
+                  $path{kotor}=$browsed_path;
 
-                    %master_item_list1 = ();
-                    $items{1} = 0;
-                    $open{1} = 0;
+                  %master_item_list1 = ();
+                  $items{1} = 0;
+                  $open{1} = 0;
 
-                    $k1_installed=1;
-                    $k1_bif = Bioware::BIF->new($path{kotor});
-                }
-                elsif ($which_game==2) {
-                    $oldpath{tsl}=$path{tsl};
-                    $oldpath{tsl_save}=$path{tsl_save};
-                    $oldpath{tsl_cloud}=$path{tsl_cloud};
-                    $path{tsl}=$browsed_path;
+                  $k1_installed=1;
+                  $k1_bif = Bioware::BIF->new($path{kotor});
+              }
+              elsif ($which_game==2) {
+                  $oldpath{tsl}=$path{tsl};
+                  $oldpath{tsl_save}=$path{tsl_save};
+                  $oldpath{tsl_cloud}=$path{tsl_cloud};
+                  $path{tsl}=$browsed_path;
 
-                    # Check if cloudsaves dir can be located
-                    if(-e $path{tsl}."/cloudsaves")
-                    {
-                        $use_tsl_cloud = 1;
-                        opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
-                        $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
-                        closedir(CLOUDSAVEDIR); # Release handle
-                    }
+                  # Check if cloudsaves dir can be located
+                  if(-e $path{tsl}."/cloudsaves")
+                  {
+                      $use_tsl_cloud = 1;
+                      opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
+                      $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
+                      closedir(CLOUDSAVEDIR); # Release handle
+                  }
 
-                    %master_item_list2 = ();
-                    $items{2} = 0;
-                    $open{2} = 0;
+                  %master_item_list2 = ();
+                  $items{2} = 0;
+                  $open{2} = 0;
 
-                    $k2_installed=1;
-                    $k2_bif = Bioware::BIF->new($path{tsl});
-                }
-                elsif ($which_game==3 && $use_tsl_cloud == 0) {
-                    $oldpath{tjm}=$path{tjm};
-                    $path{tjm}=$browsed_path;
+                  $k2_installed=1;
+                  $k2_bif = Bioware::BIF->new($path{tsl});
+              }
+              elsif ($which_game==3 && $use_tsl_cloud == 0) {
+                  $oldpath{tjm}=$path{tjm};
+                  $path{tjm}=$browsed_path;
 
-                    %master_item_list3 = ();
-                    $items{3} = 0;
-                    $open{3} = 0;
+                  %master_item_list3 = ();
+                  $items{3} = 0;
+                  $open{3} = 0;
 
-                    $tjm_installed=1;
-                    $k3_bif = Bioware::BIF->new($path{tjm});
-                }
-                elsif ($which_game==4) {
-                    $oldpath{tjm}=$path{tjm};
-                    $path{tjm}=$browsed_path;
+                  $tjm_installed=1;
+                  $k3_bif = Bioware::BIF->new($path{tjm});
+              }
+              elsif ($which_game==4) {
+                  $oldpath{tjm}=$path{tjm};
+                  $path{tjm}=$browsed_path;
 
-                    %master_item_list3 = ();
-                    $items{3} = 0;
-                    $open{3} = 0;
+                  %master_item_list3 = ();
+                  $items{3} = 0;
+                  $open{3} = 0;
 
-                    $tjm_installed=1;
-                    $k3_bif = Bioware::BIF->new($path{tjm});
-                }
-                $tree->delete('offspring', "#" . $which_game);
-                Load($which_game);
-                $tree->autosetmode();
-                $tree->close("#" . $which_game);
-                Populate_Data($which_game);
+                  $tjm_installed=1;
+                  $k3_bif = Bioware::BIF->new($path{tjm});
+              }
+              $tree->delete('offspring', "#" . $which_game);
+              Load($which_game);
+              $tree->autosetmode();
+              $tree->close("#" . $which_game);
+              Populate_Data($which_game);
 
-            }
-        },
-        -state=>'normal');
+          }
+      },
+      -state=>'normal');
     $change_path_confirm_menu->insert(1,
-        'command',
-        -label=>"Reload All Savegames For $gamename",
-        -command=>sub { ReloadAll($which_game)},
-        -state=>'normal');
+      'command',
+      -label=>"Reload All Savegames For $gamename",
+      -command=>sub { ReloadAll($which_game)},
+      -state=>'normal');
     $change_path_confirm_menu->insert(2,
-        'command',
-        -label=>'Cancel',
-        -command=>sub {  },
-        -state=>'normal');
+      'command',
+      -label=>'Cancel',
+      -command=>sub {  },
+      -state=>'normal');
     #show popup at cursor
     $change_path_confirm_menu->Popup(
-        -popover  => 'cursor',
-        -popanchor => 'nw');
+      -popover  => 'cursor',
+      -popanchor => 'nw');
 }
 sub read_global_jrls {
     if ($k1_installed) {
@@ -6841,13 +6824,13 @@ sub SpawnAddJRLWidgets {
     }
     my %revhash=reverse %jrlhash;
     Tk::Autoscroll::Init(my $jrllist= $mw->Scrolled('TList',
-        -scrollbars=>'osoe',
-        -background=>'white',
-        -selectforeground=>'#FFFFFF',
-        -selectbackground=>'#D07000',
-        -selectmode=>'extended',
-        -itemtype=>'text',
-        -orient=>'horizontal'
+      -scrollbars=>'osoe',
+      -background=>'white',
+      -selectforeground=>'#FFFFFF',
+      -selectbackground=>'#D07000',
+      -selectmode=>'extended',
+      -itemtype=>'text',
+      -orient=>'horizontal'
     ));
     $jrllist->place(-relx=>600/$x,-rely=>100/$y,-relwidth=>270/$x,-relheight=>400/$y);
     push @spawned_widgets,$jrllist;
@@ -6881,7 +6864,7 @@ sub SpawnAddJRLWidgets {
             push @$jrl_entries_arr_ref,$new_entry;
             LogIt ("Successful.");
             $tree->add("$treeitem#".$selected_jrl_tag,
-                -text=>$selected_jrl_entry,-data=>'jrl##'.$initial_state.'##');
+              -text=>$selected_jrl_entry,-data=>'jrl##'.$initial_state.'##');
             $jrllist->entryconfigure($selected_index,-style=>$newstyle);
         }
     }
@@ -7078,7 +7061,7 @@ sub Load {
         print "Reading KotOR saves...\n";
         unless (opendir SAVDIR, $path{kotor}."/saves") {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
-                -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
+              -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
             LogIt ('KSE could not find saves directory for KotOR1.');
             $k1_installed=0;
         }
@@ -7099,7 +7082,7 @@ sub Load {
         print "Reading KotOR II - TSL saves...\n";
         unless (opendir SAVDIR2, $path{tsl_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
-                -message=>'Could not find saves directory for KotOR2',-type=>'Ok');
+              -message=>'Could not find saves directory for KotOR2',-type=>'Ok');
             LogIt ('KSE could not find saves directory for KotOR2.');
             $k2_installed=0;
         }
@@ -7121,7 +7104,7 @@ sub Load {
         print "Reading KotOR II - TSL (Cloud) saves...\n";
         unless (opendir SAVDIR2, $path{tsl_cloud}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
-                -message=>'Could not find cloudsaves directory for KotOR2',-type=>'Ok');
+              -message=>'Could not find cloudsaves directory for KotOR2',-type=>'Ok');
             LogIt ('KSE could not find cloudsaves directory for KotOR2.');
             $use_tsl_cloud=0;
         }
@@ -7149,7 +7132,7 @@ sub Load {
                 if(-e $path{tjm}."/saves") {# print "path found\n";
                     unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
                         $mw->messageBox(-title=>'Directory not found',
-                            -message=>'Could not find saves directory for TJM',-type=>'Ok');
+                          -message=>'Could not find saves directory for TJM',-type=>'Ok');
                         LogIt ('KSE could not find saves directory for TJM.');
                         $tjm_installed=0;
                     }
@@ -7172,7 +7155,7 @@ sub Load {
                     if(-e $path{tjm}."/saves") {# print "path found\n";
                         unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
                             $mw->messageBox(-title=>'Directory not found',
-                                -message=>'Could not find saves directory for TJM',-type=>'Ok');
+                              -message=>'Could not find saves directory for TJM',-type=>'Ok');
                             LogIt ('KSE could not find saves directory for TJM.');
                             $tjm_installed=0;
                         }

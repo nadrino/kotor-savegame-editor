@@ -27,6 +27,10 @@ Recompiled with extra functionnalities
 - Unzip the archive in the folder of your cloned repository
 - Open Powershell
 - Exectue .bat file in the unzipped directory to setup the environement for perl
+```bat
+\\Path\to\portableshell.bat
+pushd \\Path\to\code
+```
 - Install required dependencies :
 ```bat
 cpan install Tk::HList

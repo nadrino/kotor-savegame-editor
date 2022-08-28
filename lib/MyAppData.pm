@@ -1,4 +1,6 @@
 #line 1 "MyAppData.pm"
+use warnings;
+use strict;
 package MyAppData;
 
 sub new

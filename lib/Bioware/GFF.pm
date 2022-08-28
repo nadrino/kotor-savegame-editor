@@ -8,8 +8,13 @@ package Bioware::GFF; #~~~~~~~~~~~~~~~
 #line 81
 
 use strict;
+use warnings;
 require Exporter;
 use vars qw ($VERSION @ISA @EXPORT);
+
+use File::Copy qw(copy);
+use File::Basename;
+use Win32API::File::Temp;
 
 # set version
 $VERSION=0.68; #Made more robust in the Bioware::GFF::Field::writeField sub for Lists that have only 1 or 0 structs
@@ -138,7 +143,27 @@ sub write_gff3($) {     #same as write_gff2 but uses Win32API::File::Temp
 
 sub read_gff_file($) {
     my ($gff, $fn)=@_;
-    (open my ($fh), "<", $fn) or (return 0);
+    my $fh;
+    open my $realfh, "<:raw", $fn
+      or die "Unable to open $fn: $!\n";
+    read $realfh, my $header, 10;
+    if ($header eq "_ASPRCOMP_") {
+        printf "Uncompressing GFF: ".basename($fn)."...\n";
+        my $inflateHandle = IO::Uncompress::Inflate->new($realfh, AutoClose => 1)
+          or die "Unable to open decompression stream!\n";
+
+        my $tempfile=Win32API::File::Temp->new();
+        copy $inflateHandle, $tempfile->{'fh'};
+        close $inflateHandle;
+
+        open $fh, "<:raw", $tempfile->{'fn'};
+    }
+    else {
+        seek $realfh, 0, 0;
+        $fh = $realfh;
+    }
+
+    # (open my ($fh), "<", $fn) or (return 0);
     my $header_ref=Bioware::GFF::gffReader::Header($fh,0);
     $gff->{sig}=$$header_ref{'Signature'};
     $gff->{version}=$$header_ref{'Version'};
@@ -181,7 +206,6 @@ sub read_gff_from_scalar($) {    #creates an struct from a gff memory stream (sc
     my $gff=$$gffref;
     my $fh;
     #use File::Temp qw /tempfile/;
-    use Win32API::File::Temp;
     my $tempf=Win32API::File::Temp->new();
     $fh=$tempf->{'fh'};
     binmode $fh;
@@ -216,7 +240,6 @@ sub write_gff_to_scalar($$) {    #creates a memory stream from an gff struct
     %write_info=();
     $struct0->writeStruct();
     #use File::Temp qw /tempfile/;
-    use Win32API::File::Temp;
     my $tempf=Win32API::File::Temp->new();
     my $fh=$tempf->{'fh'};
     $struct0->writeHeader(undef,$fh,$sig);
@@ -624,7 +647,6 @@ sub writeStruct {
 #Purpose: writes the structure to disk
 #Input: self
 #side effects: populates write_info and creates temp files
-    use Win32API::File::Temp;
     my ($struct)=shift;
     unless ($write_info{'fh_struct'}) {
         $write_info{'temp_struct'}   =Win32API::File::Temp->new();

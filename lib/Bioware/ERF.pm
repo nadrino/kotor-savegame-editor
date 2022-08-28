@@ -8,6 +8,14 @@ require Exporter;
 use vars qw ($VERSION @ISA @EXPORT);
 $VERSION=0.21;
 
+use IO::Uncompress::RawInflate;
+use IO::Uncompress::Inflate;
+use File::Copy qw(copy);
+use File::Basename;
+use Data::Dumper;
+use Win32API::File::Temp;
+
+
 #line 86
 
 @ISA    = qw(Exporter);
@@ -169,10 +177,35 @@ sub read_erf {
     #--------------------------
     my $self=shift;
     my $erf_filename=shift;
-    (open my ($fh), "<", $erf_filename) or (return 0);
+
+    $self->{'isCompressed'} = 0;
+    $self->{'unCompressedPath'} = $erf_filename;
+
+    my $fh;
+    open my $realfh, "<:raw", $erf_filename
+      or die "Unable to open $erf_filename: $!\n";
+    sysread $realfh, my $header, 10;
+    if ($header eq "_ASPRCOMP_") {
+        $self->{'isCompressed'} = 1;
+
+        printf "Uncompressing ERF: ".basename($erf_filename)."...\n";
+        my $inflateHandle = IO::Uncompress::Inflate->new($realfh, AutoClose => 1)
+          or die "Unable to open decompression stream!\n";
+
+        my $tempfile=Win32API::File::Temp->new();
+        copy $inflateHandle, $tempfile->{'fh'};
+        close $inflateHandle;
+
+        open $fh, "<:raw", $tempfile->{'fn'};
+        $self->{'erf_filename'} = $tempfile->{'fn'};
+    }
+    else {
+        sysseek $realfh, 0, 0;
+        $fh = $realfh;
+        $self->{'erf_filename'}=$erf_filename;
+    }
+
     binmode $fh;
-    #aux info
-    $self->{'erf_filename'}=$erf_filename;
     #header
     sysread $fh,$self->{'sig'},4;
     sysread $fh,$self->{'version'},4;
@@ -188,7 +221,6 @@ sub read_erf {
      $self->{'build_day'},
      $self->{'description_str_ref'})=unpack('V9',$tmp);
 
-    #localized string list
     sysseek $fh,$self->{'offset_to_localized_string'},0;
     sysread $fh,$tmp,$self->{'localized_string_size'};
     my @localized_strings;
@@ -201,7 +233,6 @@ sub read_erf {
     }
     $self->{'localized_strings'}= [@localized_strings];
 
-    #key list
     sysseek $fh,$self->{'offset_to_key_list'},0;
     my @resources; my @files;
     if ($self->{version} eq 'V1.0') {
@@ -236,7 +267,6 @@ sub read_erf {
     $self->{Files} = \@files;
     $self->{'resources'}=[@resources];
 
-    #resource list
     sysseek $fh,$self->{'offset_to_resource_list'},0;
     for (my $resource_index=0; $resource_index<$self->{'entry_count'}; $resource_index++) {
         sysread $fh, $tmp, 8;
@@ -247,6 +277,7 @@ sub read_erf {
          $self->{'resources'}[$resource_index]{'new_size'}=$self->{'resources'}[$resource_index]{'res_size'};
     }
 
+    # print Dumper($self);
     close $fh;
     return 1;
 }
@@ -391,7 +422,6 @@ sub export_resource_to_temp_file {
     return 0 unless defined $res_ix;
 
     $resource=$self->{'resources'}[$res_ix];
-    use Win32API::File::Temp;
     my $tempfile=Win32API::File::Temp->new();
     binmode $tempfile->{'fh'};
 #    my $tempfile = %tempfile;
