@@ -6248,6 +6248,10 @@ sub PrintScreenshot {
     my $registered_path = GetRegisteredPath($gameversion);
     my $screenFilePath = "$registered_path\\\\saves\\\\".$gamedir."\\\\Screen.tga";
 
+    if( !(-e $screenFilePath) ){
+        $screenFilePath = "$registered_path\\\\saves\\\\".$gamedir."\\\\screen.tga";
+    }
+
     if( -e $screenFilePath ) {
 
         my $img=Imager->new();
@@ -7092,7 +7096,7 @@ sub Load {
         if ($branch_to_populate==2) {
             $tree->delete('offsprings','#2');                                                        #if this is a re-populate, then delete any leaves from this branch
         }
-        for (@savedirs) {
+        for (sort @savedirs) {
             /\\.*\\(.+?)$/;
             my $dir=$1;
             $tree->add('#2#'.$dir,-text=>$dir);
