@@ -367,6 +367,7 @@ if(-e "$workingdir/KSE.ini") {
         if($line =~ /TJM_Installed=(.*)/)    { $tjm_installed   = $1; }
 
         if($line =~ /K1_Path=(.*)/)          { $path{kotor}     = $1; }
+        if($line =~ /K1_SavePath=(.*)/)      { $path{kotor_save}= $1; }
 
         if($line =~ /K2_Path=(.*)/)          { $path{tsl}       = $1; }
         if($line =~ /K2_SavePath=(.*)/)      { $path{tsl_save}  = $1; }
@@ -383,10 +384,10 @@ if(-e "$workingdir/KSE.ini") {
 }
 
 sub initKotor2{
-    print "Initializing kotor 2 path...\n";
+    print "Looking for KotOR2 game and saves folder...\n";
 
     # Game folder
-    if( !( -e $path{tsl}."/chitin.key" ) ){
+    unless( -e $path{tsl}."/chitin.key" ){
 
         print "TSL not found. Attempt using AppData info...\n";
         my $appdata_obj = MyAppData->new();
@@ -397,66 +398,92 @@ sub initKotor2{
             print "Found with appdata: ".$path{tsl}."\n";
         }
         else{
-            print "Could not find TSL game folder. Asking user..."."\n";
-            unless ($browsed_path=BrowseForFolder('Locate TSL installation directory')) {
-                print "Path not specified.\n";
-                return -1;
-            }
+            # print "Could not find TSL game folder. Asking user..."."\n";
+            # unless ($browsed_path=BrowseForFolder('Locate TSL installation directory')) {
+            #     print "Path not specified.\n";
+            #     return 0;
+            # }
 
             if( -e $browsed_path."/chitin.key" ){ $path{tsl} = $browsed_path; }
             else{
                 print "Kotor2 path not found.\n";
-                return -1;
+                return 0;
             }
         }
 
     }
+    print "Found KotOR2 game files at $path{tsl}\n";
 
     # Save folder
-    if( -e $path{'tsl_save'} ){
-        print "Found specified TSL save path: ".$path{'tsl_save'}."\n";
+    my $tslSavesFound = 0;
+    if( $path{tsl_save} eq "" ){
+        $path{tsl_save} = $path{tsl}."\\Saves";
     }
+    unless( opendir SAVDIR, $path{tsl_save} ){ print "KotOR2 game saves not found at: $path{tsl_save}\n"; }
     else{
-        print "Could not find ".$path{'tsl_save'}.": looking for save folder...\n";
-        if( -e $path{tsl} . "/saves" ){
-            $path{'tsl_save'} = $path{tsl} . "/saves";
-            print "Found: ".$path{'tsl_save'}."\n";
-        }
-        elsif( -e $path{tsl} . "/Saves" ){
-            $path{'tsl_save'} = $path{tsl} . "/Saves";
-            print "Found: ".$path{'tsl_save'}."\n";
-        }
-        else{
-            print "Could not find save folder.\n";
-        }
+        print "Found KotOR2 game saves at $path{tsl_save}\n";
+        $tslSavesFound = 1;
     }
+    close SAVDIR;
 
-    # Cloudsaves folder
     $use_tsl_cloud = 0;
-    if( -e $path{'tsl_cloud'} ){
-        $use_tsl_cloud = 1;
-
+    if( $path{'tsl_cloud'} eq "" ){
+        $path{'tsl_cloud'} = $path{tsl}."\\cloudsaves";
     }
-    if(-e $path{tsl} . "\\cloudsaves")
-    {
-        $use_tsl_cloud = 1;
-        opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
-        $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
+
+    if( -e $path{'tsl_cloud'}."\\steam_autocloud.vdf" ){
+        my $cloudSaveBaseDir = $path{'tsl_cloud'};
+        if( opendir(CLOUDSAVEDIR, $cloudSaveBaseDir)){
+            $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$cloudSaveBaseDir\\$_"} readdir(CLOUDSAVEDIR))[0];
+        }
         closedir(CLOUDSAVEDIR); # Release handle
     }
-    else { $use_tsl_cloud = 0; }
+
+    if( opendir CLOUDSAVEDIR, $path{'tsl_cloud'} ){
+        print "Found KotOR2 game cloud saves at $path{'tsl_cloud'}\n";
+        $use_tsl_cloud = 1;
+    }
+    else{ $use_tsl_cloud = 0; }
+    closedir(CLOUDSAVEDIR);
 
     # # Failed to locate either saves directory, alert the user
-    # if($tslfound == 0 && $use_tsl_cloud == 0)
-    # {
-    #     $mw->messageBox(-title=>'Directory not found',
-    #       -message=>'Could not find saves or Cloud saves for KotOR2',
-    #       -type=>'Ok');
-    #
-    #     LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
-    #     return -1;
-    # }
+    if($tslSavesFound == 0 && $use_tsl_cloud == 0)
+    {
+        $mw->messageBox(-title=>'Directory not found',
+          -message=>'Could not find saves or Cloud saves for KotOR2',
+          -type=>'Ok');
 
+        LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
+        return 0;
+    }
+
+    return 1;
+}
+
+sub initKotor{
+    print "Looking for KotOR game and saves folder...\n";
+
+    unless( -e "$path{kotor}/chitin.key" ){
+        print "Could not find KotOR game files: $path{kotor}/chitin.key\n";
+        return 0;
+    }
+    print "Found KotOR game files at $path{kotor}\n";
+
+    # by default
+    if ( $path{kotor_save} eq "" ){ $path{kotor_save} = $path{kotor}."\\saves"; }
+
+    unless (opendir SAVDIR, $path{kotor_save}) {
+        #saves directory not found
+        $mw->messageBox(-title=>'Directory not found',
+          -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
+        LogIt ('KSE could not find saves directory for KotOR1.' . "\n");
+        close SAVDIR;
+        return 0;
+    }
+    close SAVDIR;
+
+    # at this point, everything should be fine.
+    print "Found KotOR game saves at $path{kotor_save}\n";
     return 1;
 }
 
@@ -521,19 +548,8 @@ sub initKotor2{
 
 
 
-if ($k1_installed == 1)
-{
-    unless (opendir SAVDIR, $path{kotor}."/saves") {                                            #saves directory not found
-        $mw->messageBox(-title=>'Directory not found',
-          -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
-        LogIt ('KSE could not find saves directory for KotOR1.' . "\n");
-        $k1_installed=0;
-    }
-    close SAVDIR;
-}
 
-
-
+$k1_installed = initKotor();
 $k2_installed = initKotor2();
 
 if (-e $path{tjm}."/saves") {
@@ -578,12 +594,6 @@ if($tjm_installed == 1) { $tree->add('#'.(++$tIndex),-text=>'The Jedi Masters');
 #}
 #}
 
-
-if ($k1_installed) {LogIt ('KSE found KotOR1 saves directory in ' . $path{kotor} . "\n")}
-if ($k2_installed) {LogIt ('KSE found KotOR2 saves directory in ' . $path{tsl_save} . "\n")}
-if ($use_tsl_cloud == 1 && defined($path{'tsl_cloud'})) {LogIt ('KSE found KotOR2 Cloud saves directory in ' . $path{'tsl_cloud'} . "\n")}
-if ($tjm_installed == 1) {LogIt ('KSE found TJM saves directory in ' . $path{tjm} . "\n")}
-
 if($k1_installed) { Load(1); }
 if($k2_installed) { Load(2); }
 if($use_tsl_cloud == 1) { Load(3); }
@@ -621,12 +631,6 @@ if($num_args eq 2)
 
 # system 1, "updater.exe", "/Version", $version, "/LaunchFromApplication";
 
-print "Starting main loop...\n";
-MainLoop;
-LogIt ("---------Termination--------\n\n");
-close STDERR;
-
-
 open INI, ">", "$workingdir/KSE.ini";
 
 print INI "[Installed]\n";
@@ -637,6 +641,7 @@ print INI "\n";
 print INI "[Paths]\n";
 print INI "Steam_Path=$path{'steam'}\n";
 print INI "K1_Path=$path{kotor}\n";
+print INI "K1_SavePath=$path{kotor_save}\n";
 print INI "K2_Path=$path{tsl}\n";
 print INI "K2_SavePath=$path{tsl_save}\n";
 print INI "K2_SavePathCloud=$path{tsl_cloud}\n";
@@ -646,6 +651,12 @@ print INI "[Options]\n";
 print INI "Use_K2_Cloud=$use_tsl_cloud";
 
 close INI;
+
+print "Starting main loop...\n";
+MainLoop;
+LogIt ("---------Termination--------\n\n");
+close STDERR;
+
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 sub Populate_tree
 {
@@ -788,7 +799,7 @@ sub What {  #called by BrowseCmd
                 elsif ($levels[2] eq 'NPCs')      { Populate_NPCs($parm1)    }
                 elsif ($levels[2] eq 'Globals')   {
                     if ($gameversion==1) {
-                        Read_Global_Vars("$path{kotor}\\saves\\$levels[1]",$parm1)
+                        Read_Global_Vars("$path{kotor_save}\\$levels[1]",$parm1)
                     }
                     elsif ($gameversion==2) {
                         Read_Global_Vars("$path{tsl_save}\\$levels[1]",$parm1)
@@ -817,8 +828,7 @@ sub What {  #called by BrowseCmd
     #        $numhere->destroy if Tk::Exists($numhere);
 }
 
-sub Populate_EquipTables
-{
+sub Populate_EquipTables{
     my ($type, $treeitem, $npc, $truth) = @_;
 
     my $gv;
@@ -1289,7 +1299,7 @@ sub Populate_Level1 {
     my %soundset_hash;
     my %standard_npcs;
     if ($gameversion==1) {
-        $registered_path=$path{kotor} . "/saves";
+        $registered_path=$path{kotor_save};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
         %portraits_hash=%portraits_hash1;
@@ -1823,7 +1833,7 @@ sub Current_Party{
     eval {$picture_label_photo->delete};
 
     if ($gameversion==1) {
-        $registered_path=$path{kotor} . "/saves";
+        $registered_path=$path{kotor_save};
         %standard_npcs=%standard_kotor_npcs;
     }
     elsif ($gameversion==2) {
@@ -2262,17 +2272,18 @@ sub Populate_AreaContainer{
             $containerStrref = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('LocName')]{Value}{StringRef};
         }
 
-        my $containerName 	= "Unnamed";
+        my $containerName 	= "UNNAMED";
         if ( $containerStrref != -1 ) {
             $containerName=Bioware::TLK::string_from_resref( $registeredPath,$containerStrref );
         }
-        my $containerDisplayTitle = sprintf( "%-32s%s", $containerTag, $containerName );
+        # my $containerDisplayTitle = sprintf( "%-32s%s", $containerTag, $containerName );
+        my $containerDisplayTitle = sprintf( "%s (%s)", $containerName, $containerTag );
 
         if( $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('HasInventory')]{Value} ){
 
             my $itemList = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('ItemList')]{Value};
 
-            print "  ".$containerDisplayTitle."\n";
+            print "-> ".$containerDisplayTitle."\n";
             $tree->add(
               $treeItem."#".$iContainer."_".$containerTag,
               -text=>$containerDisplayTitle,
@@ -2301,11 +2312,11 @@ sub Populate_AreaContainer{
 
                 my $itemTag 	= lc $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Tag')]{Value};
                 my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
-                my $itemTitle	= sprintf( "%-32s%s  [%d]", $itemTag, $itemName, $itemStack );
+                my $itemTitle	= sprintf( "%s [%d] (%s)", $itemName, $itemStack, $itemTag );
 
-                print "    ".$itemTitle."\n";
-                $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag, -text=>$itemTitle, -data=>'can modify');
-                $tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag);
+                print "     ".$itemTitle."\n";
+                $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem, -text=>$itemTitle, -data=>'can modify');
+                $tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem);
                 $iItem++;
 
             }
@@ -2533,7 +2544,7 @@ sub CommitChanges {
     my $gameversion=(split /#/,$treeitem)[1];
     my $registered_path;
     if ($gameversion==1) {
-        $registered_path=$path{kotor} . "/saves";
+        $registered_path=$path{kotor_save};
     }
     elsif ($gameversion==2) {
         $registered_path=$path{tsl_save};
@@ -5954,6 +5965,7 @@ sub LogIt {
 
     open (LOG, ">>", $workingdir . "\\$Logfile");
     print LOG ($mon+1, "/",$mday, "/",$year+1900, "--", $hour, ":",$min, ":",$sec, "= ",$loginfo, "\n");
+    print ($mon+1, "/",$mday, "/",$year+1900, "--", $hour, ":",$min, ":",$sec, "= ",$loginfo, "\n");
     close LOG;
     return;
 }
@@ -6091,14 +6103,37 @@ sub GetRegisteredPath {
     elsif ($gameversion==2) {
         $registered_path=$path{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
         $registered_path=$path{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
         $registered_path=$path{tjm};
     }
     elsif ($gameversion==4) {
         $registered_path=$path{tjm};
+    }
+
+    return $registered_path
+}
+sub GetRegisteredSavePath {
+    my $gameversion = shift;
+
+    my $registered_path;
+
+    if ($gameversion==1) {
+        $registered_path=$path{kotor_save};
+    }
+    elsif ($gameversion==2) {
+        $registered_path=$path{tsl_save};
+    }
+    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+        $registered_path=$path{tsl_cloud};
+    }
+    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+        $registered_path=$path{tjm}."\\saves";
+    }
+    elsif ($gameversion==4) {
+        $registered_path=$path{tjm}."\\saves";
     }
 
     return $registered_path
@@ -6112,7 +6147,7 @@ sub LoadData {
     my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
     my $registered_path;
     if ($gameversion==1) {
-        $registered_path=$path{kotor} . "/saves";
+        $registered_path=$path{kotor_save};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
         %portraits_hash=%portraits_hash1;
@@ -6245,12 +6280,10 @@ sub PrintScreenshot {
     my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
     my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
 
-    my $registered_path = GetRegisteredPath($gameversion);
-    my $screenFilePath = "$registered_path\\\\saves\\\\".$gamedir."\\\\Screen.tga";
+    my $registered_path = GetRegisteredSavePath($gameversion);
 
-    if( !(-e $screenFilePath) ){
-        $screenFilePath = "$registered_path\\\\saves\\\\".$gamedir."\\\\screen.tga";
-    }
+    my $screenFilePath = "$registered_path\\$gamedir\\Screen.tga";
+    unless( -e $screenFilePath ){ $screenFilePath = "$registered_path\\$gamedir\\screen.tga"; }
 
     if( -e $screenFilePath ) {
 
@@ -7063,13 +7096,13 @@ sub Load {
     #Read KotOR1 saves
     if ($k1_installed && (($branch_to_populate == undef)||($branch_to_populate==1))) {
         print "Reading KotOR saves...\n";
-        unless (opendir SAVDIR, $path{kotor}."/saves") {                                        #saves directory not found
+        unless (opendir SAVDIR, $path{kotor_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
             LogIt ('KSE could not find saves directory for KotOR1.');
             $k1_installed=0;
         }
-        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{kotor}\\saves\\$_"} readdir(SAVDIR);    #read all directories in saves dir
+        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{kotor_save}\\$_"} readdir(SAVDIR);    #read all directories in saves dir
         close SAVDIR;
         if ($branch_to_populate==1) {
             $tree->delete('offsprings','#1');                                                         #if this is a re-populate, then delete any leaves from this branch
@@ -7359,10 +7392,10 @@ sub Load {
         #        CommitChanges($treeitem_destination);
         #        $tree->delete('offsprings',$treeitem_destination."#Globals");
         #        if ($gameversion==1) {
-        #              Read_Global_Vars("$path{kotor}\\saves\\$levels[1]",$parm1)
+        #              Read_Global_Vars("$path{kotor_save}\\$levels[1]",$parm1)
         #           }
         #        elsif ($gameversion==2) {
-        #              Read_Global_Vars("$path{tsl}\\saves\\$levels[1]",$parm1)
+        #              Read_Global_Vars("$path{tsl_save}\\$levels[1]",$parm1)
         #           }
         #        elsif ($gameversion==3) {
         #              Read_Global_Vars("$path{tjm}\\saves\\$levels[1]",$parm1)
