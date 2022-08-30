@@ -7107,7 +7107,7 @@ sub Load {
         if ($branch_to_populate==1) {
             $tree->delete('offsprings','#1');                                                         #if this is a re-populate, then delete any leaves from this branch
         }
-        for (@savedirs) {
+        for (sort @savedirs) {
             /\\.*\\(.+?)$/;
             my $dir=$1;
             $tree->add('#1#'.$dir,-text=>$dir);
@@ -7151,7 +7151,7 @@ sub Load {
         if ($branch_to_populate==3) {
             $tree->delete('offsprings','#3');                                                        #if this is a re-populate, then delete any leaves from this branch
         }
-        for (@savedirs) {
+        for (sort @savedirs) {
             /\\.*\\(.+?)$/;
             my $dir=$1;
             $tree->add('#3#'.$dir,-text=>$dir);
@@ -7179,7 +7179,7 @@ sub Load {
                     if ($branch_to_populate==3) {
                         $tree->delete('offsprings','#3');                                                      #if this is a re-populate, then delete any leaves from this branch
                     }
-                    for (@savedirs) {
+                    for (sort @savedirs) {
                         /\\.*\\(.+?)$/;
                         my $dir=$1;
                         $tree->add('#3#'.$dir,-text=>$dir);
