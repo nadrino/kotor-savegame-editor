@@ -143,7 +143,6 @@ use Tk::ItemStyle;
 # use Tk::ErrorDialog;
 require Tk::Dialog;
 our $version='v3.5.0';
-print "KSE ".$version." is starting...\n";
 if ($Tk::VERSION  eq '800.029') { $version .= ' alternate'}
 use Win32::FileOp;
 use Win32::TieRegistry;
@@ -320,6 +319,7 @@ $workingdir =~ s#/#\\#g;
 $debug_flag=1;
 #}
 LogIt ('KSE startup '.$version . "\n");
+LogInfo("KSE ".$version." is starting...");
 
 our $mw=MainWindow->new(-title=>'KotOR Savegame Editor',-relief=>'groove');                     #Create main window
 $mw->geometry($x."x$y");                                                                        #Size of main window
@@ -817,9 +817,9 @@ sub What {  #called by BrowseCmd
                 elsif ($levels[2] eq 'Inventory') { Populate_Inventory($parm1) }
             }
             if ($#levels == 3) {
-                if    ($levels[2] eq 'NPCs')      	{ Populate_NPC($parm1) }
-                elsif ($levels[3] eq 'Placeables') 	{ Populate_AreaContainer($parm1) }
-                elsif ($levels[3] eq 'Creatures') 	{ Populate_AreaContainer($parm1) }
+                if    ($levels[2] eq 'NPCs')      { Populate_NPC($parm1) }
+                elsif ($levels[3] eq 'Placeables'){ Populate_AreaContainer($parm1) }
+                elsif ($levels[3] eq 'Creatures') { Populate_AreaContainer($parm1) }
                 elsif ($levels[3] eq 'Stores') 		{ Populate_AreaContainer($parm1) }
                 elsif ($levels[3] eq 'Doors') 		{ Populate_AreaContainer($parm1) }
             }
@@ -1475,7 +1475,9 @@ sub Populate_Level1 {
     }
     $tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
 
-    $tree->add($treeitem."#Area", -text=>'Area Name: '. $area_name." (".$lastModuleName.")",-data=>$area_name);
+    $tree->add($treeitem."#OtherAreas",-text=>"Other Areas");
+
+    $tree->add($treeitem."#Area", -text=>'Current Area: '. $area_name." (".$lastModuleName.")",-data=>$area_name);
     $tree->add($treeitem."#Area#Placeables",-text=>"Placeables");  	$tree->hide('entry',$treeitem."#Area#Placeables");
     $tree->add($treeitem."#Area#Placeables#",-text=>"");  			$tree->hide('entry',$treeitem."#Area#Placeables#");
     $tree->add($treeitem."#Area#Creatures",-text=>"Creatures");  	$tree->hide('entry',$treeitem."#Area#Creatures");
@@ -5110,7 +5112,9 @@ sub SpawnAddInventoryWidgets {
 
     my $selectedEntry = (split /#/,$treeitem)[-1];
     my $subInventoryIndex = -1;
-    if($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~ /#Area#Stores#/){
+    if(  $treeitem =~ /#Area#Placeables#/
+      || $treeitem =~ /#Area#Creatures#/
+      || $treeitem =~ /#Area#Stores#/){
 
 
         my @treeLevels = split /#/, $treeitem;
@@ -5970,6 +5974,63 @@ sub LogIt {
     return;
 }
 
+sub LogMessage{
+    my $logLevel = shift;
+    my $logMessage = shift;
+
+    my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
+    my $logTime = "".($year+1900)."/".($mon+1)."/".$mday." ".$hour.":".$min.":".$sec;
+
+    my $logLevelStr;
+    if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; }
+    elsif($logLevel == 1){ $logLevelStr = "[Error]"; }
+    elsif($logLevel == 2){ $logLevelStr = "[Alert]"; }
+    elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; }
+    elsif($logLevel == 4){ $logLevelStr = "[Info ]"; }
+    elsif($logLevel == 5){ $logLevelStr = "[Debug]"; }
+    elsif($logLevel == 6){ $logLevelStr = "[Trace]"; }
+
+    my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
+
+    open (LOG, ">>", $workingdir . "\\$Logfile");
+    print LOG $logStr;
+    close LOG;
+
+    print $logStr;
+
+    return;
+}
+
+sub LogFatal{
+    my $logMessage = shift;
+    LogMessage(0, $logMessage);
+    die "`Stopping after fatal error.";
+}
+sub LogError{
+    my $logMessage = shift;
+    LogMessage(1, $logMessage);
+}
+sub LogAlert{
+    my $logMessage = shift;
+    LogMessage(2, $logMessage);
+}
+sub LogWarning{
+    my $logMessage = shift;
+    LogMessage(3, $logMessage);
+}
+sub LogInfo{
+    my $logMessage = shift;
+    LogMessage(4, $logMessage);
+}
+sub LogDebug{
+    my $logMessage = shift;
+    LogMessage(5, $logMessage);
+}
+sub LogTrace{
+    my $logMessage = shift;
+    LogMessage(6, $logMessage);
+}
+
 sub LogErr {
     unless ($debug_flag) {return;}
     my $error = shift;
@@ -6221,6 +6282,13 @@ sub LoadData {
     unless ($tmpFileLastModSav=$erf->export_resource_to_temp_file("$lastModuleName.sav")) {               #export the last module as a temp file
         die "Could not find $lastModuleName.sav inside of $registered_path\\$gamedir\\savegame.sav";
     }
+
+    # DEV
+    for my $resource (@{$erf->{'resources'}}) {
+        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
+        print "RESOURCE: $res_check\n";
+    }
+
 
     my $erfLastModSav=Bioware::ERF->new();                                                               #create ERF for last module
     unless (my $tmp=$erfLastModSav->read_erf($tmpFileLastModSav->{'fn'})) {                                     #read last module structure
