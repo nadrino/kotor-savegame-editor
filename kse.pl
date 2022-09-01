@@ -857,20 +857,17 @@ sub Populate_EquipTables{
 
     my $typereal;
 
-    given ($type)
-    {
-        when (1)  { $typereal = "Head Table";    }
-        when (2)  { $typereal = "Implant Table"; }
-        when (3)  { $typereal = "Armor Table";   }
-        when (4)  { $typereal = "Arm Table";     }
-        when (5)  { $typereal = "Arm Table";     }
-        when (6)  { $typereal = "Gloves Table";  }
-        when (7)  { $typereal = "Belt Table";    }
-        when (8)  { $typereal = "Weapon Tables"; }
-        when (9)  { $typereal = "Weapon Tables"; }
-        when (10) { $typereal = "Weapon Tables"; }
-        when (11) { $typereal = "Weapon Tables"; }
-    }
+    if    ($type == 1)  { $typereal = "Head Table";    }
+    elsif ($type == 2)  { $typereal = "Implant Table"; }
+    elsif ($type == 3)  { $typereal = "Armor Table";   }
+    elsif ($type == 4)  { $typereal = "Arm Table";     }
+    elsif ($type == 5)  { $typereal = "Arm Table";     }
+    elsif ($type == 6)  { $typereal = "Gloves Table";  }
+    elsif ($type == 7)  { $typereal = "Belt Table";    }
+    elsif ($type == 8)  { $typereal = "Weapon Tables"; }
+    elsif ($type == 9)  { $typereal = "Weapon Tables"; }
+    elsif ($type == 10) { $typereal = "Weapon Tables"; }
+    elsif ($type == 11) { $typereal = "Weapon Tables"; }
 
     LogInfo ("Populating Equipment $typereal for for $gv->$gm");
 
