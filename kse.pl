@@ -108,6 +108,9 @@ use MIME::Base64;
 use Digest::HMAC_SHA1 qw(hmac_sha1);
 use Cwd;
 use MyAppData;
+use Logger;
+
+# require 'lib/Logger.pm';
 
 package main;
 
@@ -149,9 +152,6 @@ use Win32::TieRegistry;
 use bytes;
 our %leaf_memory;
 
-our $workingdir;
-our $Logfile = "\\KSE_log.txt";
-our $Errlog = "\\KSE_Errors.txt";
 our $loginfo;
 our $hour1;
 #our $treesource;
@@ -311,14 +311,11 @@ my $picture_label;
 my $picture_label_photo;
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-$workingdir = getcwd;
-$workingdir =~ s#/#\\#g;
 
 #if (-e "$Logfile")
 #{
 $debug_flag=1;
 #}
-LogIt ('KSE startup '.$version . "\n");
 LogInfo("KSE ".$version." is starting...");
 
 our $mw=MainWindow->new(-title=>'KotOR Savegame Editor',-relief=>'groove');                     #Create main window
@@ -350,13 +347,17 @@ my $use_tsl_cloud = 0;
 # 	system(@o);
 # }
 
+our $workingdir;
+$workingdir = getcwd;
+$workingdir =~ s#/#\\#g;
+
+
 if(-e "$workingdir/KSE.ini") {
-    print "Reading KSE.ini...\n";
+    LogDebug "Reading KSE.ini...";
     open INI, "<", "$workingdir/KSE.ini";
 
     my $line = undef;
-    while(<INI>)
-    {
+    while(<INI>){
         $line = $_;
         if($line =~ /\[Installed\]/)         { }
         if($line =~ /\[Paths\]/)             { }
@@ -372,7 +373,6 @@ if(-e "$workingdir/KSE.ini") {
         if($line =~ /K2_Path=(.*)/)          { $path{tsl}       = $1; }
         if($line =~ /K2_SavePath=(.*)/)      { $path{tsl_save}  = $1; }
         if($line =~ /K2_SavePathCloud=(.*)/) { $path{tsl_cloud} = $1; }
-        if($line =~ /K2_SavePathSwitch=(.*)/) { $path{tsl_switch} = $1; }
         if($line =~ /TJM_Path=(.*)/)         { $path{tjm}      = $1; }
 
         if($line =~ /Steam_Path=(.*)/)       { $path{steam}     = $1; }
@@ -380,50 +380,47 @@ if(-e "$workingdir/KSE.ini") {
     }
     close INI;
 
-    print "INI closed\n";
+    LogDebug "INI closed";
 }
 
 sub initKotor2{
-    print "Looking for KotOR2 game and saves folder...\n";
+    LogDebug "Looking for KotOR2 game and saves folder...";
 
     # Game folder
     unless( -e $path{tsl}."/chitin.key" ){
 
-        print "TSL not found. Attempt using AppData info...\n";
+        LogWarning "TSL not found. Attempt using AppData info...";
         my $appdata_obj = MyAppData->new();
         my $appdata = $appdata_obj->getappdata();
 
         if( -e $appdata . "/SWKotOR2/chitin.key" ){
             $path{tsl} = $appdata . "/SWKotOR2";
-            print "Found with appdata: ".$path{tsl}."\n";
+            LogInfo "Found with appdata: $path{tsl}";
         }
         else{
-            # print "Could not find TSL game folder. Asking user..."."\n";
+            # LogInfo "Could not find TSL game folder. Asking user...";
             # unless ($browsed_path=BrowseForFolder('Locate TSL installation directory')) {
-            #     print "Path not specified.\n";
+            #     LogError "Path not specified.";
             #     return 0;
             # }
 
             if( -e $browsed_path."/chitin.key" ){ $path{tsl} = $browsed_path; }
             else{
-                print "Kotor2 path not found.\n";
+                LogError "Kotor2 path not found.";
                 return 0;
             }
         }
 
     }
-    print "Found KotOR2 game files at $path{tsl}\n";
+    LogInfo "Found KotOR2 game files at $path{tsl}";
 
     # Save folder
     my $tslSavesFound = 0;
     if( $path{tsl_save} eq "" ){
         $path{tsl_save} = $path{tsl}."\\Saves";
     }
-    unless( opendir SAVDIR, $path{tsl_save} ){ print "KotOR2 game saves not found at: $path{tsl_save}\n"; }
-    else{
-        print "Found KotOR2 game saves at $path{tsl_save}\n";
-        $tslSavesFound = 1;
-    }
+    unless( opendir SAVDIR, $path{tsl_save} ){ LogError "KotOR2 game saves not found at: $path{tsl_save}"; }
+    else{ LogInfo "Found KotOR2 game saves at $path{tsl_save}"; $tslSavesFound = 1; }
     close SAVDIR;
 
     $use_tsl_cloud = 0;
@@ -440,7 +437,7 @@ sub initKotor2{
     }
 
     if( opendir CLOUDSAVEDIR, $path{'tsl_cloud'} ){
-        print "Found KotOR2 game cloud saves at $path{'tsl_cloud'}\n";
+        LogInfo "Found KotOR2 game cloud saves at $path{'tsl_cloud'}";
         $use_tsl_cloud = 1;
     }
     else{ $use_tsl_cloud = 0; }
@@ -453,7 +450,7 @@ sub initKotor2{
           -message=>'Could not find saves or Cloud saves for KotOR2',
           -type=>'Ok');
 
-        LogIt('KSE failed to find the saves or Cloud saves for KotOR2');
+        LogError('KSE failed to find the saves or Cloud saves for KotOR2');
         return 0;
     }
 
@@ -461,13 +458,13 @@ sub initKotor2{
 }
 
 sub initKotor{
-    print "Looking for KotOR game and saves folder...\n";
+    LogDebug "Looking for KotOR game and saves folder...";
 
     unless( -e "$path{kotor}/chitin.key" ){
-        print "Could not find KotOR game files: $path{kotor}/chitin.key\n";
+        LogError "Could not find KotOR game files: $path{kotor}/chitin.key";
         return 0;
     }
-    print "Found KotOR game files at $path{kotor}\n";
+    LogInfo "Found KotOR game files at $path{kotor}";
 
     # by default
     if ( $path{kotor_save} eq "" ){ $path{kotor_save} = $path{kotor}."\\saves"; }
@@ -476,14 +473,14 @@ sub initKotor{
         #saves directory not found
         $mw->messageBox(-title=>'Directory not found',
           -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
-        LogIt ('KSE could not find saves directory for KotOR1.' . "\n");
+        LogError ('KSE could not find saves directory for KotOR1.' . "\n");
         close SAVDIR;
         return 0;
     }
     close SAVDIR;
 
     # at this point, everything should be fine.
-    print "Found KotOR game saves at $path{kotor_save}\n";
+    LogInfo "Found KotOR game saves at $path{kotor_save}";
     return 1;
 }
 
@@ -556,7 +553,7 @@ if (-e $path{tjm}."/saves") {
     if(!(opendir SAVDIR3, $path{tjm}."/saves")) {                                             #saves directory not found
         $mw->messageBox(-title=>'Directory not found',
           -message=>'Could not find saves directory for TJM',-type=>'Ok');
-        LogIt ('KSE could not find saves directory for TJM.' . "\n");
+        LogError ('KSE could not find saves directory for TJM.');
         $tjm_installed=0;
     }
     close SAVDIR3;
@@ -597,7 +594,7 @@ if($tjm_installed == 1) { $tree->add('#'.(++$tIndex),-text=>'The Jedi Masters');
 if($k1_installed) { Load(1); }
 if($k2_installed) { Load(2); }
 if($use_tsl_cloud == 1) { Load(3); }
-if($tjm_installed == 1) { LogIt('TJM is Loading'); Load(4); }
+if($tjm_installed == 1) { LogDebug('TJM is Loading'); Load(4); }
 $tree->autosetmode();                                                                        #show the [+] symbols
 
 if($k1_installed) { $tree->close('#1'); }
@@ -652,9 +649,9 @@ print INI "Use_K2_Cloud=$use_tsl_cloud";
 
 close INI;
 
-print "Starting main loop...\n";
+LogInfo "Starting main loop...";
 MainLoop;
-LogIt ("---------Termination--------\n\n");
+LogInfo("---------Termination--------\n");
 close STDERR;
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -729,7 +726,7 @@ sub What {  #called by BrowseCmd
 
     my @real = @parms[3 .. $#parms];
     my $lin = join ('->', @real);
-    LogIt ("$gv" . "->$gm" . "->" . "$lin clicked"); ##logging edits
+    LogTrace("$gv" . "->$gm" . "->" . "$lin clicked"); ##logging edits
 
     $bandaid=0; #ouch! (This is to make the scrollbars update.)
     $tree->Subwidget('yscrollbar')->after(1000,\&updscrl);
@@ -878,7 +875,7 @@ sub Populate_EquipTables{
         when (11) { $typereal = "Weapon Tables"; }
     }
 
-    LogIt ("Populating Equipment $typereal for for $gv->$gm");
+    LogInfo ("Populating Equipment $typereal for for $gv->$gm");
 
     my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
 
@@ -1288,7 +1285,7 @@ sub Populate_Level1 {
 
     $_ = $su;
 
-    LogIt ("Populating main elements for $gv->$gm");
+    LogInfo ("Populating main elements for $gv->$gm");
 
     my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
     my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
@@ -1635,7 +1632,7 @@ sub Populate_Classes {
 
     # get our breadcrumbs
 
-    LogIt("Populating Classes: $gv->$gm");
+    LogInfo("Populating Classes: $gv->$gm");
     my $gameversion=(split /#/,$treeitem)[1];
     my %classes;
     my %powers_full;
@@ -1671,7 +1668,7 @@ sub Populate_Classes {
           -text=>'Level: '.$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'},
           -data=>'can modify'
         );
-        LogIt ("-- ".$classes{$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('Class')]{'Value'}}." Level: "
+        LogInfo ("-- ".$classes{$class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('Class')]{'Value'}}." Level: "
           . $class_struct->{'Fields'}[$class_struct->get_field_ix_by_label('ClassLevel')]{'Value'});
         $tree->hide('entry',$treeitem."#Class$i#Level");
         my $knownlist0_ix=$class_struct->get_field_ix_by_label('KnownList0');
@@ -1684,7 +1681,7 @@ sub Populate_Classes {
                   -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
                   -data=>'can modify');
                 $tree->hide('entry',$treeitem."#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}});
-                LogIt ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
+                LogInfo ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
             }
             $tree->hide('entry',$treeitem."#Class$i#KnownList0");
         }
@@ -1741,7 +1738,7 @@ sub Populate_Skills{
     }
 
     # get our breadcrumbs
-    LogIt("Populating skills: $gv->$gm");
+    LogInfo("Populating skills: $gv->$gm");
     my $gff=${$tree->entrycget( '#'.$gameversion.'#'.(split /#/,$treeitem)[2],-data)}{'GFF-ifo'};
     my $mod_playerlist=$gff->{Main}{Fields}[$gff->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
     my @skill_list=@{$mod_playerlist->{'Fields'}[$mod_playerlist->get_field_ix_by_label('SkillList')]{'Value'}};
@@ -1807,7 +1804,7 @@ sub Populate_Feats {
     #		print "\$key, \$value: $key,$value";
     #	}
 
-    LogIt ("Populating Feats: $gv->$gm");
+    LogInfo ("Populating Feats: $gv->$gm");
 
     # get our breadcrumbs
     my $gff=${$tree->entrycget( '#'.$gameversion.'#'.(split /#/,$treeitem)[2],-data)}{'GFF-ifo'};
@@ -1820,7 +1817,7 @@ sub Populate_Feats {
         $tree->add($treeitem."#Feat".$feats_full{label}{$feat_struct->{'Fields'}{'Value'}},-text=>"$feats_full{name}{$feat_struct->{Fields}{Value}}",-data=>'can modify');
         $tree->hide('entry',$treeitem."#Feat".$feats_full{label}{$feat_struct->{'Fields'}{'Value'}});
         $i++;
-        LogIt ("--- Feat: " . $feats_full{name}{$feat_struct->{'Fields'}{'Value'}});
+        LogInfo ("--- Feat: " . $feats_full{name}{$feat_struct->{'Fields'}{'Value'}});
     };
     $tree->autosetmode();
 }
@@ -1956,7 +1953,7 @@ sub Populate_NPCs{
         my $tmpfil=$erf_sav->export_resource_to_temp_file("AVAILNPC$npc_num.utc");
         my $npc_gff=Bioware::GFF->new();
         $npc_gff->read_gff_file($tmpfil->{'fn'});
-        LogIt ("AVAILNPC$npc_num read into memory " . (-s $tmpfil->{'fn'}) ." bytes). Parsing module");
+        LogInfo ("AVAILNPC$npc_num read into memory " . (-s $tmpfil->{'fn'}) ." bytes). Parsing module");
         my $strref=$npc_gff->{Main}{'Fields'}[$npc_gff->{Main}->get_field_ix_by_label('FirstName')]{'Value'}{'StringRef'};
         my $npcname;
         if ($strref == -1) {
@@ -2197,7 +2194,7 @@ sub Populate_NPC{
                   -text=>"$powers_full{name}{$power_struct->{'Fields'}{'Value'}}",
                   -data=>'can modify');
                 $tree->hide('entry',$treeitem."#Classes#Class$i#KnownList0#Power".$powers_full{label}{$power_struct->{'Fields'}{'Value'}});
-                LogIt ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
+                LogInfo ("--- Power: " . $powers_full{name}{$power_struct->{'Fields'}{'Value'}});
             }
             $tree->hide('entry',$treeitem."#Classes#Class$i#KnownList0");
         }
@@ -2576,26 +2573,26 @@ sub CommitChanges {
     my $gbl_gff=$tree->entrycget("$root#Globals",-data);
     #$mw->Busy(-recurse=>1); #BUG ? -> when commiting while the scrolling windows is not up
 
-    LogIt ("Committing changes for $gv->$gm");
+    LogInfo ("Committing changes for $gv->$gm");
 
     # write PARTYTABLE.res
     my $fn="$registered_path\\$gamedir\\PARTYTABLE.res";
     my $tot_pty_written=$pty_gff->write_gff_file($fn);
     if ($tot_pty_written==0) { die "Could not write to $registered_path\\$gamedir\\PARTYTABLE.res" }
-    LogIt ("Partytable updated. $tot_pty_written bytes written.");
+    LogInfo ("Partytable updated. $tot_pty_written bytes written.");
 
     # write savenfo.res
     my $fn2="$registered_path\\$gamedir\\savenfo.res";
     my $tot_res_written=$res_gff->write_gff_file($fn2);
     if ($tot_res_written==0) { die "Could not write to $registered_path\\$gamedir\\savenfo.res" }
-    LogIt ("Savenfo updated. $tot_res_written bytes written.");
+    LogInfo ("Savenfo updated. $tot_res_written bytes written.");
 
     # write GLOBALVARS.res
     if (ref $gbl_gff eq 'Bioware::GFF') {
         my $fn2a="$registered_path\\$gamedir\\GLOBALVARS.res";
         my $tot_gbl_written=$gbl_gff->write_gff_file($fn2a);
         if ($tot_gbl_written==0) { die "Could not write to $registered_path\\$gamedir\\GLOBALVARS.res" }
-        LogIt ("GLOBALVARS.res updataed.  $tot_gbl_written bytes written.");
+        LogInfo ("GLOBALVARS.res updataed.  $tot_gbl_written bytes written.");
     }
 
     # write Module.ifo to tempfile
@@ -2660,7 +2657,7 @@ sub CommitChanges {
         my $utcname="AVAILNPC$i.utc";
         if ($datahash->{$utcname}) {
             my $utc_gff=$datahash->{$utcname};
-            LogIt "Writing $utcname";
+            LogInfo "Writing $utcname";
             my $tmpfil=Win32API::File::Temp->new();
             unless (my $tmp=$utc_gff->write_gff_file($tmpfil->{'fn'})) {
                 die "Failed to write $utcname to tempfile";
@@ -2675,7 +2672,7 @@ sub CommitChanges {
     my $utcname="PC.utc";
     if ($datahash->{$utcname}) {
         my $utc_gff=$datahash->{$utcname};
-        LogIt "Writing $utcname";
+        LogInfo "Writing $utcname";
         my $tmpfil=Win32API::File::Temp->new();
         unless (my $tmp=$utc_gff->write_gff_file($tmpfil->{'fn'})) {
             die "Failed to write PC.utc to tempfile";
@@ -2693,16 +2690,16 @@ sub CommitChanges {
     unless ($total_written=$erf_sav->write_erf("$registered_path\\$gamedir\\savegame.sav")) {
         die "Could not write to $registered_path\\$gamedir\\savegame.sav"
     }
-    LogIt("$registered_path\\$gamedir\\savegame.sav written ($total_written bytes total)");
+    LogInfo("$registered_path\\$gamedir\\savegame.sav written ($total_written bytes total)");
 
 
     # do .sig files if a .sig file exists in the game directory
     chdir "$registered_path/$gamedir";
     my @tmpsig =glob "*.sig";
-    LogIt("Scalar of tmpsig is ". scalar @tmpsig);
+    LogInfo("Scalar of tmpsig is ". scalar @tmpsig);
     if (scalar @tmpsig) {
         print ".sig files have been detected (XBox). Regenerating...\n";
-        for my $t (@tmpsig) { LogIt "sig file detection: $t" }
+        for my $t (@tmpsig) { LogInfo "sig file detection: $t" }
         my $authkey;
         if ($gameversion==1) {
             $authkey=pack('C16',0x07,0xDF,0x71,0xE6,0xB1,0xFB,0x1C,0x82,0x78,0x26,0x68,0x3C,0x2A,0x48,0x42,0xD3);
@@ -2726,7 +2723,7 @@ sub CommitChanges {
             binmode $fho;
             syswrite $fho, $hmac_out;
             close $fho;
-            LogIt ("$gff_to_sig{$f} created.");
+            LogInfo ("$gff_to_sig{$f} created.");
         }
 
         my $savegame_size= -s "$registered_path\\$gamedir\\savegame.sav";
@@ -2771,13 +2768,13 @@ sub CommitChanges {
         binmode $fho;
         syswrite $fho, $hmac_out;
         close $fho;
-        LogIt ("SAVE_HEADERVAR.sig created.");
+        LogInfo ("SAVE_HEADERVAR.sig created.");
         $hmac_out= hmac_sha1($datadata,$authkey);
         open $fho,">","$registered_path\\$gamedir\\SAVE_DATA.sig";
         binmode $fho;
         syswrite $fho, $hmac_out;
         close $fho;
-        LogIt ("SAVE_DATA.sig created.");
+        LogInfo ("SAVE_DATA.sig created.");
         print ".sig files have been regenerated.\n";
     }
 
@@ -2854,7 +2851,7 @@ sub SpawnFeatWidgets {
     my $featvalue= $revhash_name{$cur_feat_name};
     my $btn=$mw->Button(-text=>"Remove Feat",-command=>sub {
         unless ($tree->info('exists',$treeitem)) {return;}
-        LogIt("Removing feat: $cur_feat_name");
+        LogInfo("Removing feat: $cur_feat_name");
         if ($treeitem=~/NPCs/) {
             my $featlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FeatList')];
             my $featlist_structs=$featlist->{Value};
@@ -2986,7 +2983,7 @@ sub SpawnAddFeatWidgets {
         my $selected_feat=$featlist->entrycget($cur_list_index,-text);
         my $featvalue=$revhash_name{$selected_feat};
         return unless my $iconresref=$feats{icon}{$featvalue};
-        LogIt ("Trying to picture: $iconresref");
+        LogInfo ("Trying to picture: $iconresref");
         my $tgadata;
         my $ftyp='bmp'; #IMAGE FORMAT
         if (-e "$registered_path/override/$iconresref".".tga") {
@@ -2995,7 +2992,7 @@ sub SpawnAddFeatWidgets {
             binmode $tmpfh;
             $tgadata=<$tmpfh>;
             close $tmpfh;
-            LogIt ("KotOR".$gameversion." override $iconresref".".tga detected");
+            LogInfo ("KotOR".$gameversion." override $iconresref".".tga detected");
         } else {
             unless (defined ($erf)) {  return; }
             my $erf_ix=$erf->load_erf_resource($iconresref.".tpc");
@@ -3007,7 +3004,7 @@ sub SpawnAddFeatWidgets {
             if (($tpc->{tpc}{header}{data_size}==0) && ($tpc->{tpc}{header}{encoding}==4)) {
                 $ftyp='bmp'
             }
-            LogIt ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
+            LogInfo ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
         }
         $img->read(data=>$tgadata,type=>'tga') or die $img->errstr; ;
         my $buf;
@@ -3029,7 +3026,7 @@ sub SpawnAddFeatWidgets {
             my $featvalue2=$revhash_name{$selected_feat};
             my $lbl=$feats{label}{$featvalue2};
             next if ($tree->info('exists',"$newtreepath#Feats#Feat$lbl"));
-            LogIt ("Adding feat: $selected_feat");
+            LogInfo ("Adding feat: $selected_feat");
             if ($treeitem=~/NPCs/) {
                 my $featlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FeatList')];
                 my $featlist_structs=$featlist->{Value};
@@ -3051,7 +3048,7 @@ sub SpawnAddFeatWidgets {
                 $new_feat->createField('Type'=>FIELD_WORD,'Label'=>'Feat','Value'=>$featvalue2);
                 push @$featlist_structs,$new_feat;                            #add the feat
             }
-            LogIt ("Successful addition of feat: $selected_feat.");
+            LogInfo ("Successful addition of feat: $selected_feat.");
             $tree->add("$newtreepath#Feats#Feat$lbl",
               -text=>$selected_feat,-data=>'can modify');
             $featlist->entryconfigure($selected_index,-style=>$newstyle);
@@ -3074,7 +3071,7 @@ sub SpawnAddFeatWidgets {
             my $featvalue2=$revhash_name{$selected_feat};
             my $lbl=$feats{label}{$featvalue2};
             next unless ($tree->info('exists',"$newtreepath#Feats#Feat$lbl"));
-            LogIt ("Removing feat: $selected_feat");
+            LogInfo ("Removing feat: $selected_feat");
             if ($treeitem=~/NPCs/) {
                 my $featlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FeatList')];
                 my $featlist_structs=$featlist->{Value};
@@ -3104,7 +3101,7 @@ sub SpawnAddFeatWidgets {
                 }
                 $featlist->{Value}=[@new_featlist_structs];                   #perform feat removal on PC
             }
-            LogIt ("Successful removal of feat: $selected_feat.");
+            LogInfo ("Successful removal of feat: $selected_feat.");
             $tree->delete('entry',"$newtreepath#Feats#Feat$lbl");
             $featlist->entryconfigure($selected_index,-style=>'');
         }
@@ -3153,7 +3150,7 @@ sub SpawnSkillWidgets {
 
     $txt->bind('<Return>'=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_skill: $new_rank");
-        LogIt("Changing $cur_skill rank to $new_rank");
+        LogInfo("Changing $cur_skill rank to $new_rank");
         my $treeitem2=$treeitem;
         my $skillnumber=chop $treeitem2;
         if ($treeitem=~/NPCs/) {
@@ -3172,7 +3169,7 @@ sub SpawnSkillWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_skill: $new_rank");
-        LogIt("Changing $cur_skill rank to $new_rank");
+        LogInfo("Changing $cur_skill rank to $new_rank");
         my $treeitem2=$treeitem;
         my $skillnumber=chop $treeitem2;
         if ($treeitem=~/NPCs/) {
@@ -3232,7 +3229,7 @@ sub SpawnPowerWidgets {
         unless ($tree->info('exists',$treeitem)) { return;}
         $treeitem=~/#Class(\d)#/;
         my $classindex=$1;
-        LogIt ("Removing power: $cur_power_name");
+        LogInfo ("Removing power: $cur_power_name");
 
         if ($treeitem=~/NPCs/) {
             $treeitem=~/Class(\d)/;
@@ -3241,7 +3238,7 @@ sub SpawnPowerWidgets {
             my $classlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('ClassList')]{Value};
             my $cur_class=$classlist->[$classnumber];
             my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-            unless (defined $knownlist_ix) { LogIt ("Failed to remove power");  return; }
+            unless (defined $knownlist_ix) { LogInfo ("Failed to remove power");  return; }
             my $powerlist=$cur_class->{Fields}[$knownlist_ix];
             my $powerlist_structs=$powerlist->{Value};
             my @new_powerlist_structs=();
@@ -3263,7 +3260,7 @@ sub SpawnPowerWidgets {
             my $classlist=$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('ClassList')]{Value};
             my $cur_class=$classlist->[$classindex];
             my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-            unless (defined $knownlist_ix) { LogIt ("Failed to remove power");  return; }
+            unless (defined $knownlist_ix) { LogInfo ("Failed to remove power");  return; }
             my $powerlist=$cur_class->{Fields}[$knownlist_ix];
             my $powerlist_structs=$powerlist->{Value};
             my @new_powerlist_structs=();
@@ -3275,7 +3272,7 @@ sub SpawnPowerWidgets {
             $powerlist->{Value}=[@new_powerlist_structs];                 #perform power removal on PC
         }
         $tree->delete('entry',$treeitem);
-        LogIt ("Power removed succesfully.");
+        LogInfo ("Power removed succesfully.");
     }
     )->place(-relx=>600/$x,-rely=>520/$y);
     push @spawned_widgets,$btn;
@@ -3371,7 +3368,7 @@ sub SpawnAddPowerWidgets {
         my $selected_power=$powerlist->entrycget($cur_list_index,-text);
         my $powervalue=$revhash_name{$selected_power};
         return unless my $iconresref=$powers{icon}{$powervalue};
-        LogIt ("Trying to picture: $iconresref");
+        LogInfo ("Trying to picture: $iconresref");
         my $tgadata;
         my $ftyp='bmp'; #IMAGE FORMAT
         if (-e "$registered_path/override/$iconresref".".tga") {
@@ -3380,7 +3377,7 @@ sub SpawnAddPowerWidgets {
             binmode $tmpfh;
             $tgadata=<$tmpfh>;
             close $tmpfh;
-            LogIt ("KotOR".$gameversion." override $iconresref".".tga detected");
+            LogInfo ("KotOR".$gameversion." override $iconresref".".tga detected");
         } else {
             unless (defined ($erf)) {  return; }
             my $erf_ix=$erf->load_erf_resource($iconresref.".tpc");
@@ -3392,7 +3389,7 @@ sub SpawnAddPowerWidgets {
             if (($tpc->{tpc}{header}{data_size}==0) && ($tpc->{tpc}{header}{encoding}==4)) {
                 $ftyp='bmp'
             }
-            LogIt ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
+            LogInfo ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
         }
         $img->read(data=>$tgadata,type=>'tga') or die $img->errstr; ;
         my $buf;
@@ -3416,14 +3413,14 @@ sub SpawnAddPowerWidgets {
             my $powervalue2=$revhash_name{$selected_power};
             my $lbl=$powers{label}{$powervalue2};
             next if ($tree->info('exists',"$newtreepath#KnownList0#Power$lbl"));
-            LogIt ("Adding power: $selected_power");
+            LogInfo ("Adding power: $selected_power");
             if ($treeitem=~/NPCs/) {
                 $treeitem=~/Class(\d)/;
                 my $classnumber=$1;
                 my $classlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('ClassList')]{Value};
                 my $cur_class=$classlist->[$classnumber];
                 my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-                unless (defined $knownlist_ix) { LogIt ("Failed to add power");  next; }
+                unless (defined $knownlist_ix) { LogInfo ("Failed to add power");  next; }
                 my $powerlist_=$cur_class->{Fields}[$knownlist_ix];
                 my $powerlist_structs=$powerlist_->{Value};
                 my $new_power=Bioware::GFF::Struct->new('ID'=>3);
@@ -3440,14 +3437,14 @@ sub SpawnAddPowerWidgets {
                 my $classlist=$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('ClassList')]{Value};
                 my $cur_class=$classlist->[$classindex];
                 my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-                unless (defined $knownlist_ix) { LogIt ("Failed to add power");  next; }
+                unless (defined $knownlist_ix) { LogInfo ("Failed to add power");  next; }
                 my $powerlist_=$cur_class->{Fields}[$knownlist_ix];
                 my $powerlist_structs=$powerlist_->{Value};
                 my $new_power=Bioware::GFF::Struct->new('ID'=>3);
                 $new_power->createField('Type'=>FIELD_WORD,'Label'=>'Spell','Value'=>$powervalue2);
                 push @$powerlist_structs,$new_power;                            #add the power
             }
-            LogIt ("Successful.");
+            LogInfo ("Successful.");
             $tree->add("$newtreepath#KnownList0#Power$lbl",
               -text=>$selected_power,-data=>'can modify');
             $powerlist->entryconfigure($selected_index,-style=>$newstyle);
@@ -3470,7 +3467,7 @@ sub SpawnAddPowerWidgets {
             my $powervalue2=$revhash_name{$selected_power};
             my $lbl=$powers{label}{$powervalue2};
             next unless ($tree->info('exists',"$newtreepath#KnownList0#Power$lbl"));
-            LogIt ("Removing power: $selected_power");
+            LogInfo ("Removing power: $selected_power");
             if ($treeitem=~/NPCs/) {
                 $treeitem=~/Class(\d)/;
                 my $classnumber=$1;
@@ -3478,7 +3475,7 @@ sub SpawnAddPowerWidgets {
                 my $classlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('ClassList')]{Value};
                 my $cur_class=$classlist->[$classnumber];
                 my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-                unless (defined $knownlist_ix) { LogIt ("Failed to remove power");  next; }
+                unless (defined $knownlist_ix) { LogInfo ("Failed to remove power");  next; }
                 my $powerlist_=$cur_class->{Fields}[$knownlist_ix];
                 my $powerlist_structs=$powerlist_->{Value};
                 my @new_powerlist_structs=();
@@ -3500,7 +3497,7 @@ sub SpawnAddPowerWidgets {
                 my $classlist=$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('ClassList')]{Value};
                 my $cur_class=$classlist->[$classindex];
                 my $knownlist_ix=$cur_class->get_field_ix_by_label('KnownList0');
-                unless (defined $knownlist_ix) { LogIt ("Failed to remove power"); next; }
+                unless (defined $knownlist_ix) { LogInfo ("Failed to remove power"); next; }
                 my $powerlist_=$cur_class->{Fields}[$knownlist_ix];
                 my $powerlist_structs=$powerlist->{Value};
                 my @new_powerlist_structs=();
@@ -3513,7 +3510,7 @@ sub SpawnAddPowerWidgets {
             }
             $tree->delete('entry',"$newtreepath#KnownList0#Power$lbl");
             $powerlist->entryconfigure($selected_index,-style=>'');
-            LogIt ("Power removed succesfully.");
+            LogInfo ("Power removed succesfully.");
         }
     })->place(-relx=>698/$x,-rely=>520/$y,-relwidth=>90/$x);
     push @spawned_widgets,$btn4;
@@ -3571,7 +3568,7 @@ sub SpawnGenericWidgets {
 
     $txt->bind('<Return>'=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_trait: $new_rank");
-        LogIt ("Changing $cur_trait value to $new_rank  using field # $traithash{$cur_trait}");
+        LogInfo ("Changing $cur_trait value to $new_rank  using field # $traithash{$cur_trait}");
         if ($treeitem=~/NPCs/) {
             if ( $cur_trait eq 'Level') {
                 $treeitem=~/Class(\d)/;
@@ -3612,7 +3609,7 @@ sub SpawnGenericWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_trait: $new_rank");
-        LogIt ("Changing $cur_trait value to $new_rank  using field # $traithash{$cur_trait}");
+        LogInfo ("Changing $cur_trait value to $new_rank  using field # $traithash{$cur_trait}");
         if ($treeitem=~/NPCs/) {
             if ( $cur_trait eq 'Level') {
                 $treeitem=~/Class(\d)/;
@@ -3682,7 +3679,7 @@ sub SpawnPartyWidgets {
 
     $txt->bind('<Return>'=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_trait: $new_rank");
-        LogIt ("Changing $cur_trait to $new_rank");
+        LogInfo ("Changing $cur_trait to $new_rank");
 
         if ($cur_trait eq 'Influence') {
             $$pty_gff_ref->{Main}{Fields}[$$pty_gff_ref->{Main}->get_field_ix_by_label($traithash{$cur_trait})]{Value}[$npc_num]{Fields}{Value}=$new_rank;
@@ -3694,7 +3691,7 @@ sub SpawnPartyWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"$cur_trait: $new_rank");
-        LogIt ("Changing $cur_trait to $new_rank");
+        LogInfo ("Changing $cur_trait to $new_rank");
 
         if ($cur_trait eq 'Influence') {
             $$pty_gff_ref->{Main}{Fields}[$$pty_gff_ref->{Main}->get_field_ix_by_label($traithash{$cur_trait})]{Value}[$npc_num]{Fields}{Value}=$new_rank;
@@ -3721,13 +3718,13 @@ sub SpawnSaveGameNameWidgets {
 
     $txt->bind('<Return>'=>sub {
         $tree->entryconfigure($treeitem,-text=>"Savegame Name: $new_savegamename");
-        LogIt("Changing savegamename to $new_savegamename");
+        LogInfo("Changing savegamename to $new_savegamename");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('SAVEGAMENAME')]{'Value'}=$new_savegamename;
     });
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"Savegame Name: $new_savegamename");
-        LogIt("Changing savegamename to $new_savegamename");
+        LogInfo("Changing savegamename to $new_savegamename");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('SAVEGAMENAME')]{'Value'}=$new_savegamename;
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btn1;
@@ -3762,7 +3759,7 @@ sub SpawnFirstNameWidgets {
 
     $txt->bind('<Return>'=>sub {
         if ($treeitem=~/NPCs/) {
-            LogIt ("Changing NPC name from $cur_name to $new_playername");
+            LogInfo ("Changing NPC name from $cur_name to $new_playername");
             $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FirstName')]{Value}{StringRef}=-1;
             $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FirstName')]{Value}{Substrings}[0]{Value}=$new_playername;
             $tree->entryconfigure($treeitem,-text=>"$new_playername");
@@ -3774,7 +3771,7 @@ sub SpawnFirstNameWidgets {
             $tree->entryconfigure($root,-data=>$datahash);
 
         } else {
-            LogIt ("Changing player name to $new_playername");
+            LogInfo ("Changing player name to $new_playername");
             my $mod_playerlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
             $mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FirstName')]{Value}{StringRef}=-1;
             $mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FirstName')]{Value}{Substrings}[0]{Value}=$new_playername;
@@ -3794,7 +3791,7 @@ sub SpawnFirstNameWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         if ($treeitem=~/NPCs/) {
-            LogIt ("Changing NPC name from $cur_name to $new_playername");
+            LogInfo ("Changing NPC name from $cur_name to $new_playername");
             $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FirstName')]{Value}{StringRef}=-1;
             $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('FirstName')]{Value}{Substrings}[0]{Value}=$new_playername;
             $tree->entryconfigure($treeitem,-text=>"$new_playername");
@@ -3806,7 +3803,7 @@ sub SpawnFirstNameWidgets {
             $tree->entryconfigure($root,-data=>$datahash);
 
         } else {
-            LogIt ("Changing player name to $new_playername");
+            LogInfo ("Changing player name to $new_playername");
             my $mod_playerlist=$$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
             $mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FirstName')]{Value}{StringRef}=-1;
             $mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FirstName')]{Value}{Substrings}[0]{Value}=$new_playername;
@@ -3864,7 +3861,7 @@ sub SpawnTimePlayedWidgets {
           (sprintf "%uh ",($newtime/3600)).
           (sprintf "%um ",(($newtime % 3600)/60)).
           (sprintf "%us",($newtime % 60)));
-        LogIt("Chaning time played to $newtime");
+        LogInfo("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
 
@@ -3874,7 +3871,7 @@ sub SpawnTimePlayedWidgets {
           (sprintf "%uh ",($newtime/3600)).
           (sprintf "%um ",(($newtime % 3600)/60)).
           (sprintf "%us",($newtime % 60)));
-        LogIt("Chaning time played to $newtime");
+        LogInfo("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
 
@@ -3884,7 +3881,7 @@ sub SpawnTimePlayedWidgets {
           (sprintf "%uh ",($newtime/3600)).
           (sprintf "%um ",(($newtime % 3600)/60)).
           (sprintf "%us",($newtime % 60)));
-        LogIt("Chaning time played to $newtime");
+        LogInfo("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     });
 
@@ -3894,7 +3891,7 @@ sub SpawnTimePlayedWidgets {
           (sprintf "%uh ",($newtime/3600)).
           (sprintf "%um ",(($newtime % 3600)/60)).
           (sprintf "%us",($newtime % 60)));
-        LogIt("Chaning time played to $newtime");
+        LogInfo("Chaning time played to $newtime");
         $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('TIMEPLAYED')]{Value}=$newtime;
     }
     )->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
@@ -3933,12 +3930,12 @@ sub SpawnCheatWidgets {
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         if ($treeitem =~/Cheat/) {
             $tree->entryconfigure($treeitem,-text=>"Cheats Used: $new_cheatval");
-            LogIt("Changing cheat flag to $new_cheatval");
+            LogInfo("Changing cheat flag to $new_cheatval");
             $$res_gff_ref->{Main}{Fields}[$$res_gff_ref->{Main}->get_field_ix_by_label('CHEATUSED')]{Value}=$new_cheatval;
             $$pty_gff_ref->{Main}{Fields}[$$pty_gff_ref->{Main}->get_field_ix_by_label('PT_CHEAT_USED')]{Value}=$new_cheatval; }
         else {
             $tree->entryconfigure($treeitem,-text=>"Min1HP: $new_cheatval");
-            LogIt("Changing Min1HP flag to $new_cheatval");
+            LogInfo("Changing Min1HP flag to $new_cheatval");
             if ($treeitem=~/NPCs/) {
                 $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('Min1HP')]{Value}=$new_cheatval;
                 my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];                        #store the new
@@ -3977,7 +3974,7 @@ sub SpawnBooleanWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"$lbltext: $curval");
-        LogIt("Changing $lbltext to $curval");
+        LogInfo("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my $bitstring
           =unpack('B*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValBoolean')]{Value});
@@ -4008,7 +4005,7 @@ sub SpawnNumericWidgets {
 
     $txt1->bind('<Return>'=> sub {
         $tree->entryconfigure($treeitem,-text=>"$lbltext: $curval");
-        LogIt("Changing $lbltext to $curval");
+        LogInfo("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my @bytevalues
           =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
@@ -4019,7 +4016,7 @@ sub SpawnNumericWidgets {
 
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $tree->entryconfigure($treeitem,-text=>"$lbltext: $curval");
-        LogIt("Changing $lbltext to $curval");
+        LogInfo("Changing $lbltext to $curval");
         my $ix_into_gff=(split /__/,$treeitem)[1];
         my @bytevalues
           =unpack('C*',$$gbl_gff_ref->{Main}{Fields}[$$gbl_gff_ref->{Main}->get_field_ix_by_label('ValNumber')]{Value});
@@ -4081,7 +4078,7 @@ sub SpawnGenderWidgets {
     my $btn1=$mw->Button(-text=>'Apply',-command=>sub {
         $curgendertext=$genders{$curgender};
         $tree->entryconfigure($treeitem,-text=>"Gender: $curgendertext");
-        LogIt("Changing Gender to $curgendertext");
+        LogInfo("Changing Gender to $curgendertext");
         if ($treeitem =~/NPCs/) {
             $$ifo_gff_ref->{Main}{Fields}[$$ifo_gff_ref->{Main}->get_field_ix_by_label('Gender')]{Value}=$curgender;
             my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];                        #store the new
@@ -4177,7 +4174,7 @@ sub SpawnChangeClassWidgets {
         if ($cur_list_index eq '' ) { return; } #nothing selected
         my $newclassvalue=$revhash{$classlist->get($cur_list_index)};
         my $oldclassvalue=$revhash{($tree->entrycget($treeitem,-text))};
-        LogIt ("Changing class from " .($tree->entrycget($treeitem,-text)). " ($oldclassvalue) to " .
+        LogInfo ("Changing class from " .($tree->entrycget($treeitem,-text)). " ($oldclassvalue) to " .
           $classlist->get($cur_list_index) . " ($newclassvalue)");
 
         #get the struct in question
@@ -4199,7 +4196,7 @@ sub SpawnChangeClassWidgets {
 
         if ( (exists $spellcasters{$newclassvalue}) &&    #new class is a spell caster
           !(exists $spellcasters{$oldclassvalue}) ){    #old class was not -- need to configure
-            LogIt('Adding power list');
+            LogInfo('Adding power list');
             my $sub_struct=Bioware::GFF::Struct->new('ID'=>17767);
             $sub_struct->createField('Type'=>FIELD_BYTE,'Label'=>'NumSpellsLeft','Value'=>0);
             $class_struct->createField('Type'=>FIELD_LIST,'Label'=>'SpellsPerDayList','Value'=>[$sub_struct]);
@@ -4211,7 +4208,7 @@ sub SpawnChangeClassWidgets {
 
         } elsif ( !(exists $spellcasters{$newclassvalue}) &&     #new class is not a spell caster
           (exists $spellcasters{$newclassvalue}) ){     #but old class was -- need to configure
-            LogIt ('Removing power list');
+            LogInfo ('Removing power list');
             my $ix=0;
             my @newfields=();
             for my $classfield (@{$class_struct->{Fields}}) {
@@ -4413,7 +4410,7 @@ sub SpawnAppearanceWidgets {
         if ($cur_list_index eq '' ) { return; } #nothing selected
         my $newappearancevalue=$revhash{$appearancelist->get($cur_list_index)};
         my $oldappearancevalue=$revhash{$cur_appearance_name};
-        LogIt ("Changing appearance from $cur_appearance_name  ($oldappearancevalue) to " .
+        LogInfo ("Changing appearance from $cur_appearance_name  ($oldappearancevalue) to " .
           $appearancelist->get($cur_list_index) . " ($newappearancevalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Appearance: " . ($appearancelist->get($cur_list_index)));
@@ -4520,7 +4517,7 @@ sub SpawnPortraitWidgets {
             binmode $tmpfh;
             $tgadata=<$tmpfh>;
             close $tmpfh;
-            LogIt("KotOR".$gameversion." override $selected_portrait.tga detected");
+            LogInfo("KotOR".$gameversion." override $selected_portrait.tga detected");
         }
         else {
             unless (defined ($erf)) {  return; }
@@ -4546,7 +4543,7 @@ sub SpawnPortraitWidgets {
         if ($cur_list_index eq '' ) { return; } #nothing selected
         my $newportraitvalue=$revhash{$portraitlist->get($cur_list_index)};
         my $oldportraitvalue=$revhash{$cur_portrait_name};
-        LogIt ("Changing appearance from $cur_portrait_name ($oldportraitvalue) to " .
+        LogInfo ("Changing appearance from $cur_portrait_name ($oldportraitvalue) to " .
           $portraitlist->get($cur_list_index) . " ($newportraitvalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Portrait: " . ($portraitlist->get($cur_list_index)));
@@ -4630,7 +4627,7 @@ sub SpawnSoundsetWidgets {
         if ($cur_list_index eq '' ) { return; } #nothing selected
         my $newsoundsetvalue=$revhash{$soundsetlist->get($cur_list_index)};
         my $oldsoundsetvalue=$revhash{$cur_soundset_name};
-        LogIt ("Changing soundset from $cur_soundset_name ($oldsoundsetvalue) to " .
+        LogInfo ("Changing soundset from $cur_soundset_name ($oldsoundsetvalue) to " .
           $soundsetlist->get($cur_list_index) . " ($newsoundsetvalue)");
         $tree->autosetmode();
         $tree->entryconfigure($treeitem,-text=>"Soundset: " . ($soundsetlist->get($cur_list_index)));
@@ -4811,7 +4808,7 @@ sub Populate_Inventory {
         $registered_path=$path{tjm};
     }
 
-    LogIt("Populating $gv->$gm");
+    LogInfo("Populating $gv->$gm");
     my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
     my $gff=${$tree->entrycget( $root,-data)}{'GFF-inv'};
     my $itemlist=$gff->{Main}{Fields}{Value};
@@ -4875,7 +4872,7 @@ sub SpawnInventoryWidgets {
         my $curtext=$tree->entrycget($treeitem,-text);
         if ($cur_vasl>0) {
             $curtext=~/(.*)\[(\d+)/;
-            LogIt ("Changing count of $1 from $2 to $cur_val");
+            LogInfo ("Changing count of $1 from $2 to $cur_val");
             my $newtext="$1\[$cur_vasl\]";
             my $this_tag=(split / /,$curtext)[0];
             $tree->entryconfigure($treeitem,-text=>$newtext);
@@ -4890,7 +4887,7 @@ sub SpawnInventoryWidgets {
         }
         else {
             my $this_tag=(split / /,$curtext)[0];
-            LogIt("Removing $this_tag from inventory");
+            LogInfo("Removing $this_tag from inventory");
             my $itemlist=$$inv_gff_ref->{Main}{Fields}{Value};
             my @newitemlist;
             for my $item_struct (@$itemlist) {
@@ -4984,7 +4981,7 @@ sub SpawnInventoryWidgets {
         my $curtext=$tree->entrycget($treeitem,-text);
         if ($cur_vasl>0) {
             $curtext=~/(.*)\[(\d+)/;
-            LogIt ("Changing count of $1 from $2 to $cur_val");
+            LogInfo ("Changing count of $1 from $2 to $cur_val");
             my $newtext="$1\[$cur_vasl\]";
             my $this_tag=(split / /,$curtext)[0];
             $tree->entryconfigure($treeitem,-text=>$newtext);
@@ -5025,7 +5022,7 @@ sub SpawnInventoryWidgets {
         }
         else {
             my $this_tag=(split / /,$curtext)[0];
-            LogIt("Removing $this_tag from inventory");
+            LogInfo("Removing $this_tag from inventory");
             my $itemlist;
             if( $treeitem =~/#Area#Placeables#/ ){
                 my $root='#'.$gameversion.'#'.$savegamedir;
@@ -5238,7 +5235,7 @@ sub SpawnAddInventoryWidgets {
           'override'=>$master_item_list{$key}{'override'},
           'possessed'=>$possessed{$master_item_list{$key}{'tag'}}
         };
-        if ($lilhash->{'override'}) { LogIt "override: itemtext: $$lilhash{'itemtext'} ### $key # $master_item_list{$key}{'tag'} # $desc" }
+        if ($lilhash->{'override'}) { LogInfo "override: itemtext: $$lilhash{'itemtext'} ### $key # $master_item_list{$key}{'tag'} # $desc" }
 
         push @templates,$lilhash;
     }
@@ -5285,7 +5282,7 @@ sub SpawnAddInventoryWidgets {
             $templatelist->insert('end',-text=>$template->{'itemtext'},-style=>$possessedstyle); }
         elsif ($template->{'override'}) {
             for (my $i=0; $i<length $template->{'itemtext'}; $i++){
-                #LogIt (substr ($template->{'itemtext'},$i) . ' ' . ord (substr ($template->{'itemtext'},$i)));
+                #LogInfo (substr ($template->{'itemtext'},$i) . ' ' . ord (substr ($template->{'itemtext'},$i)));
             }
             $templatelist->insert('end',-text=>$template->{'itemtext'},-style=>$overridestyle); }
         else {
@@ -5307,10 +5304,10 @@ sub SpawnAddInventoryWidgets {
         my $selected_baseitem=$master_item_list{$selected_template}{baseitem};
 
         my $selected_item_class=$baseitems_hash_ref->{$selected_baseitem};
-        unless (exists $baseitems_hash_ref->{$selected_baseitem}) {LogIt "$selected_baseitem does not exist in baseitems_hash"}
+        unless (exists $baseitems_hash_ref->{$selected_baseitem}) {LogInfo "$selected_baseitem does not exist in baseitems_hash"}
 
         my $selected_modelvar=sprintf("%3.3u",$master_item_list{$selected_template}{modelvar});
-        LogIt ("Trying to picture: $selected_template $selected_baseitem $selected_item_class $selected_modelvar");
+        LogInfo ("Trying to picture: $selected_template $selected_baseitem $selected_item_class $selected_modelvar");
         my $tgadata;
         my $ftyp='bmp'; #IMAGE FORMAT
         if (-e "$registered_path/override/$selected_item_class".$selected_modelvar.".tga") {
@@ -5319,7 +5316,7 @@ sub SpawnAddInventoryWidgets {
             binmode $tmpfh;
             $tgadata=<$tmpfh>;
             close $tmpfh;
-            LogIt ("KotOR".$gameversion." override $selected_item_class".$selected_modelvar.".tga detected");
+            LogInfo ("KotOR".$gameversion." override $selected_item_class".$selected_modelvar.".tga detected");
         } else {
             unless (defined ($erf)) {  return; }
             my $erf_ix=$erf->load_erf_resource($selected_item_class . $selected_modelvar.".tpc");
@@ -5330,7 +5327,7 @@ sub SpawnAddInventoryWidgets {
             $tpc->write_tga(\$tgadata);
             if (($tpc->{tpc}{header}{data_size}==0) && ($tpc->{tpc}{header}{encoding}==4)) {
                 $ftyp='bmp'            }
-            LogIt ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
+            LogInfo ("ftyp: $ftyp $tpc->{tpc}{header}{data_size} $tpc->{tpc}{header}{encoding}");
         }
         $img->read(data=>$tgadata,type=>'tga') or die $img->errstr; ;
         #$img->read(file=>"d:/swkotor2/tk.tga",type=>'tga') or die $img->errstr; ;
@@ -5365,7 +5362,7 @@ sub SpawnAddInventoryWidgets {
 
             # Getting information about this item (.uti file)
             my $this_item_text = $templatelist->entrycget($selected_index, -text);
-            LogIt("Adding Item: $this_item_text");
+            LogInfo("Adding Item: $this_item_text");
             my $selected_uti = (split / /, $this_item_text)[0] . ".uti";
             print "Loading uti file: " . $selected_uti . "\n";
             my $uti_gff = Bioware::GFF->new();
@@ -5620,7 +5617,7 @@ sub SpawnAddInventoryWidgets {
 
             # update style in list
             $templatelist->entryconfigure($selected_index, -style => $possessedstyle);
-            LogIt("Successful");
+            LogInfo("Successful");
         }
     };
 
@@ -5657,7 +5654,7 @@ sub Generate_Master_Item_List {
         my $twoda_obj=Bioware::TwoDA->new();
         my $hashref;
         if (-e $registered_path."/override/baseitems.2da") {
-            LogIt ('KotOR'.$gameversion.' baseitems.2da override detected.');
+            LogInfo ('KotOR'.$gameversion.' baseitems.2da override detected.');
             $hashref=$twoda_obj->read2da($registered_path."/override/baseitems.2da");
         }
         else {
@@ -5974,62 +5971,62 @@ sub LogIt {
     return;
 }
 
-sub LogMessage{
-    my $logLevel = shift;
-    my $logMessage = shift;
-
-    my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
-    my $logTime = "".($year+1900)."/".($mon+1)."/".$mday." ".$hour.":".$min.":".$sec;
-
-    my $logLevelStr;
-    if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; }
-    elsif($logLevel == 1){ $logLevelStr = "[Error]"; }
-    elsif($logLevel == 2){ $logLevelStr = "[Alert]"; }
-    elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; }
-    elsif($logLevel == 4){ $logLevelStr = "[Info ]"; }
-    elsif($logLevel == 5){ $logLevelStr = "[Debug]"; }
-    elsif($logLevel == 6){ $logLevelStr = "[Trace]"; }
-
-    my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
-
-    open (LOG, ">>", $workingdir . "\\$Logfile");
-    print LOG $logStr;
-    close LOG;
-
-    print $logStr;
-
-    return;
-}
-
-sub LogFatal{
-    my $logMessage = shift;
-    LogMessage(0, $logMessage);
-    die "`Stopping after fatal error.";
-}
-sub LogError{
-    my $logMessage = shift;
-    LogMessage(1, $logMessage);
-}
-sub LogAlert{
-    my $logMessage = shift;
-    LogMessage(2, $logMessage);
-}
-sub LogWarning{
-    my $logMessage = shift;
-    LogMessage(3, $logMessage);
-}
-sub LogInfo{
-    my $logMessage = shift;
-    LogMessage(4, $logMessage);
-}
-sub LogDebug{
-    my $logMessage = shift;
-    LogMessage(5, $logMessage);
-}
-sub LogTrace{
-    my $logMessage = shift;
-    LogMessage(6, $logMessage);
-}
+# sub LogMessage{
+#     my $logLevel = shift;
+#     my $logMessage = shift;
+#
+#     my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
+#     my $logTime = "".($year+1900)."/".($mon+1)."/".$mday." ".$hour.":".$min.":".$sec;
+#
+#     my $logLevelStr;
+#     if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; }
+#     elsif($logLevel == 1){ $logLevelStr = "[Error]"; }
+#     elsif($logLevel == 2){ $logLevelStr = "[Alert]"; }
+#     elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; }
+#     elsif($logLevel == 4){ $logLevelStr = "[Info ]"; }
+#     elsif($logLevel == 5){ $logLevelStr = "[Debug]"; }
+#     elsif($logLevel == 6){ $logLevelStr = "[Trace]"; }
+#
+#     my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
+#
+#     open (LOG, ">>", $workingdir . "\\$Logfile");
+#     print LOG $logStr;
+#     close LOG;
+#
+#     print $logStr;
+#
+#     return;
+# }
+#
+# sub LogFatal{
+#     my $logMessage = shift;
+#     LogMessage(0, $logMessage);
+#     die "`Stopping after fatal error.";
+# }
+# sub LogError{
+#     my $logMessage = shift;
+#     LogMessage(1, $logMessage);
+# }
+# sub LogAlert{
+#     my $logMessage = shift;
+#     LogMessage(2, $logMessage);
+# }
+# sub LogWarning{
+#     my $logMessage = shift;
+#     LogMessage(3, $logMessage);
+# }
+# sub LogInfo{
+#     my $logMessage = shift;
+#     LogMessage(4, $logMessage);
+# }
+# sub LogDebug{
+#     my $logMessage = shift;
+#     LogMessage(5, $logMessage);
+# }
+# sub LogTrace{
+#     my $logMessage = shift;
+#     LogMessage(6, $logMessage);
+# }
 
 sub LogErr {
     unless ($debug_flag) {return;}
@@ -6540,7 +6537,7 @@ sub read_global_jrls {
     if ($k1_installed) {
         $journal1=Bioware::GFF->new();
         if (-e $path{kotor}."/override/global.jrl") {
-            LogIt("KotOR global.jrl override detected");
+            LogInfo("KotOR global.jrl override detected");
             $journal1->read_gff_file($path{kotor}."/override/global.jrl");
         }
         else {
@@ -6554,7 +6551,7 @@ sub read_global_jrls {
     if ($k2_installed) {
         $journal2=Bioware::GFF->new();
         if (-e $path{tsl}."/override/global.jrl") {
-            LogIt("TSL global.jrl override detected");
+            LogInfo("TSL global.jrl override detected");
             $journal2->read_gff_file($path{tsl}."/override/global.jrl");
         }
         else {
@@ -6573,7 +6570,7 @@ sub read_global_jrls {
     if ($tjm_installed) {
         $journal3=Bioware::GFF->new();
         if (-e $path{tjm}."/override/global.jrl") {
-            LogIt("TJM global.jrl override detected");
+            LogInfo("TJM global.jrl override detected");
             $journal3->read_gff_file($path{tjm}."/override/global.jrl");
         }
         else {
@@ -6615,7 +6612,7 @@ sub Populate_Journal {
     $gm =~ s#$1##;
 
     $_ = $su;
-    LogIt ("Populating Journal for $gv->$gm");
+    LogInfo ("Populating Journal for $gv->$gm");
     my $gameversion=(split /#/,$treeitem)[1];
     my $gamedir=(split /#/,$treeitem)[2];
     #    $tree->add("$treeitem#Journal",-text=>'Journal Entries');
@@ -6743,7 +6740,7 @@ sub SpawnJRLWidgets() {
         $registered_path=$path{tjm};
     }
     my $be_selection;
-    LogIt ("Jrltag: $jrltag  JrlName: $jrlname  JrlState: $jrl_state JrlText: $jrl_text");
+    LogInfo ("Jrltag: $jrltag  JrlName: $jrlname  JrlState: $jrl_state JrlText: $jrl_text");
 
     my $twidg=$mw->ROText(-wrap=>'word',-background=>'white',-width=>30,-height=>12);
     my ($lblbe,$lblcur,$be);
@@ -6777,7 +6774,7 @@ sub SpawnJRLWidgets() {
                         $lblcur->configure(-text=>"Currently: $new_state");
                         $tree->entryconfigure($treeitem, -data=>'jrl##'.$new_state.'##'.$twidg->get('1.0','end'));
                         $datahash->{'GFF-pty'}=$pty_gff;
-                        LogIt("Changed Quest #".$ix." ($jrltag) JNL_State $jrl_state to $new_state");
+                        LogInfo("Changed Quest #".$ix." ($jrltag) JNL_State $jrl_state to $new_state");
                         last;
                     }
                     $ix++;
@@ -6828,7 +6825,7 @@ sub SpawnJRLWidgets() {
                 $lblcur->configure(-text=>"Currently: $new_state");
                 $tree->entryconfigure($treeitem, -data=>'jrl##'.$new_state.'##'.$twidg->get('1.0','end'));
                 $datahash->{'GFF-pty'}=$pty_gff;
-                LogIt("Changed Quest #".$ix." ($jrltag) JNL_State $jrl_state to $new_state");
+                LogInfo("Changed Quest #".$ix." ($jrltag) JNL_State $jrl_state to $new_state");
                 last;
             }
             $ix++;
@@ -6852,7 +6849,7 @@ sub SpawnJRLWidgets() {
         }
         $pty_gff->{Main}{Fields}[$pty_gff->{Main}->fbl('JNL_Entries')]{Value}=[@new_entries];
         $datahash->{'GFF-pty'}=$pty_gff;
-        LogIt("Removed Quest $jrltag");
+        LogInfo("Removed Quest $jrltag");
         $tree->delete('entry',$treeitem);
         for my $w ($lblbe,$lblcur,$be,$btn1,$btn2,$twidg) {$w->placeForget; $w->destroy if Tk::Exists($w)}
     })->place(-relx=>698/$x,-rely=>520/$y,-relwidth=>90/$x);
@@ -6959,7 +6956,7 @@ sub SpawnAddJRLWidgets {
             my $selected_jrl_entry=$jrllist->entrycget($selected_index,-text);
             my $selected_jrl_tag=lc($revhash{$selected_jrl_entry});
             next if ($tree->info('exists',"$treeitem#".$selected_jrl_tag));
-            LogIt ("Adding Quest: $selected_jrl_entry ($selected_jrl_tag)");
+            LogInfo ("Adding Quest: $selected_jrl_entry ($selected_jrl_tag)");
             my $new_entry=Bioware::GFF::Struct->new('ID'=>0);
             my $initial_state=10;
             $new_entry->createField('Type'=>FIELD_CEXOSTRING,'Label'=>'JNL_PlotID','Value'=>$selected_jrl_tag);
@@ -6967,7 +6964,7 @@ sub SpawnAddJRLWidgets {
             $new_entry->createField('Type'=>FIELD_DWORD,'Label'=>'JNL_Date','Value'=>$last_jnl_date);
             $new_entry->createField('Type'=>FIELD_DWORD,'Label'=>'JNL_Time','Value'=>$last_jnl_time);
             push @$jrl_entries_arr_ref,$new_entry;
-            LogIt ("Successful.");
+            LogInfo ("Successful.");
             $tree->add("$treeitem#".$selected_jrl_tag,
               -text=>$selected_jrl_entry,-data=>'jrl##'.$initial_state.'##');
             $jrllist->entryconfigure($selected_index,-style=>$newstyle);
@@ -6988,11 +6985,11 @@ sub SpawnAddJRLWidgets {
             my $selected_jrl_entry=$jrllist->entrycget($selected_index,-text);
             my $selected_jrl_tag=$revhash{$selected_jrl_entry};
             next unless ($tree->info('exists',"$treeitem#".$selected_jrl_tag));
-            LogIt ("Removing quest: $selected_jrl_entry ($selected_jrl_tag)");
+            LogInfo ("Removing quest: $selected_jrl_entry ($selected_jrl_tag)");
             my @new_entries;
             for my $jrl_entry_struct (@$jrl_entries_arr_ref) {
                 if (lc($jrl_entry_struct->{Fields}[$jrl_entry_struct->fbl('JNL_PlotID')]{Value}) eq $selected_jrl_tag) {
-                    LogIt("Successful.")
+                    LogInfo("Successful.")
                 }
                 else {
                     push @new_entries, $jrl_entry_struct;
@@ -7163,11 +7160,11 @@ sub Load {
     my $branch_to_populate=shift;
     #Read KotOR1 saves
     if ($k1_installed && (($branch_to_populate == undef)||($branch_to_populate==1))) {
-        print "Reading KotOR saves...\n";
+        LogInfo "Reading KotOR saves...";
         unless (opendir SAVDIR, $path{kotor_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
-            LogIt ('KSE could not find saves directory for KotOR1.');
+            LogInfo ('KSE could not find saves directory for KotOR1.');
             $k1_installed=0;
         }
         my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{kotor_save}\\$_"} readdir(SAVDIR);    #read all directories in saves dir
@@ -7184,11 +7181,11 @@ sub Load {
         }
     }
     if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==2))) {
-        print "Reading KotOR II - TSL saves...\n";
+        LogInfo "Reading KotOR II - TSL saves...";
         unless (opendir SAVDIR2, $path{tsl_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find saves directory for KotOR2',-type=>'Ok');
-            LogIt ('KSE could not find saves directory for KotOR2.');
+            LogInfo ('KSE could not find saves directory for KotOR2.');
             $k2_installed=0;
         }
 
@@ -7206,11 +7203,11 @@ sub Load {
         }
     }
     if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==3))) {
-        print "Reading KotOR II - TSL (Cloud) saves...\n";
+        LogInfo "Reading KotOR II - TSL (Cloud) saves...";
         unless (opendir SAVDIR2, $path{tsl_cloud}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find cloudsaves directory for KotOR2',-type=>'Ok');
-            LogIt ('KSE could not find cloudsaves directory for KotOR2.');
+            LogInfo ('KSE could not find cloudsaves directory for KotOR2.');
             $use_tsl_cloud=0;
         }
 
@@ -7233,12 +7230,12 @@ sub Load {
         {
             if($branch_to_populate == 3)
             {
-                print "Reading KotOR III - TJM saves...\n";
+                LogInfo "Reading KotOR III - TJM saves...";
                 if(-e $path{tjm}."/saves") {# print "path found\n";
                     unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
                         $mw->messageBox(-title=>'Directory not found',
                           -message=>'Could not find saves directory for TJM',-type=>'Ok');
-                        LogIt ('KSE could not find saves directory for TJM.');
+                        LogInfo ('KSE could not find saves directory for TJM.');
                         $tjm_installed=0;
                     }
 
@@ -7261,7 +7258,7 @@ sub Load {
                         unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
                             $mw->messageBox(-title=>'Directory not found',
                               -message=>'Could not find saves directory for TJM',-type=>'Ok');
-                            LogIt ('KSE could not find saves directory for TJM.');
+                            LogInfo ('KSE could not find saves directory for TJM.');
                             $tjm_installed=0;
                         }
 
@@ -7305,7 +7302,7 @@ sub Load {
             $gm =~ s#$1##;
 
             $_ = $su;
-            LogIt ("Loading game $gm for $gv");
+            LogInfo ("Loading game $gm for $gv");
 
             my $gameversion=(split /#/,$treeitem)[1];
             my $gamedir=(split /#/,$treeitem)[2];
@@ -7351,7 +7348,7 @@ sub Load {
             $gm =~ s#$1##;
 
             $_ = $su;
-            LogIt ("Loading games for $gv");
+            LogInfo ("Loading games for $gv");
 
             $tree->delete('offspring', "#" . $parms[0]);
             Load($parms[0]);
@@ -7402,7 +7399,7 @@ sub Load {
         #
         #    #memorize inventory...
         #    $globals_memorized=$datahash->{'GFF-res'};
-        #    LogIt($globals_memorized);
+        #    LogInfo($globals_memorized);
         #
         #    #remove temp indicator from any earlier DItem
         #    if ($globals_in_memory==1) {
@@ -7503,7 +7500,7 @@ sub Load {
                     }
                     ### spells.2da ###
                     if (-e $path{kotor}."/override/spells.2da") {
-                        LogIt ('KotOR1 spells.2da override detected.');
+                        LogInfo ('KotOR1 spells.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/spells.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {
@@ -7548,7 +7545,7 @@ sub Load {
                     }
                     ### appearance.2da ###
                     if (-e $path{kotor}."/override/appearance.2da") {
-                        LogIt ('KotOR1 appearance.2da override detected.');
+                        LogInfo ('KotOR1 appearance.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/appearance.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {$appearance_hash1{$k}=$hashref->{$k}{label}}
@@ -7565,7 +7562,7 @@ sub Load {
                     }
                     ### portraits.2da ###
                     if (-e $path{kotor}."/override/portraits.2da") {
-                        LogIt ('KotOR1 portraits.2da override detected.');
+                        LogInfo ('KotOR1 portraits.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/portraits.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{baseresref}) {$portraits_hash1{$k}=$hashref->{$k}{baseresref}}
@@ -7582,7 +7579,7 @@ sub Load {
                     }
                     ### feat.2da ###
                     if (-e $path{kotor}."/override/feat.2da") {
-                        LogIt ('KotOR1 feat.2da override detected.');
+                        LogInfo ('KotOR1 feat.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/feat.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {
@@ -7623,7 +7620,7 @@ sub Load {
                     }
                     ### soundset.2da ###
                     if (-e $path{kotor}."/override/soundset.2da") {
-                        LogIt ('KotOR1 soundset.2da override detected.');
+                        LogInfo ('KotOR1 soundset.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/soundset.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {$soundset_hash1{$k}=$hashref->{$k}{label}}
@@ -7640,7 +7637,7 @@ sub Load {
                     }
                     ### skills.2da ###
                     if (-e $path{kotor}."/override/skills.2da") {
-                        LogIt ('KotOR1 skills.2da override detected.');
+                        LogInfo ('KotOR1 skills.2da override detected.');
                         my $hashref=$twoda_obj->read2da($path{kotor}."/override/skills.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{name}) {$skills_hash1{$k}=string_from_resref($path{kotor},$hashref->{$k}{name},'KotOR1 skills.2da')}
@@ -7657,7 +7654,7 @@ sub Load {
                     }
                     ### classes.2da ###
                     if (-e $path{kotor}."/override/classes.2da") {
-                        LogIt ('KotOR1 classes.2da override detected.');
+                        LogInfo ('KotOR1 classes.2da override detected.');
                         my %classes_detail1=%{$twoda_obj->read2da($path{kotor}."/override/classes.2da")};
                         for my $c (keys %classes_detail1) {
                             if ($classes_detail1{$c}{spellgaintable}) {
@@ -7689,7 +7686,7 @@ sub Load {
                     }
                     ### gender.2da ###
                     if (-e $path{kotor}."/override/gender.2da") {
-                        LogIt ('KotOR1 gender.2da override detected.');
+                        LogInfo ('KotOR1 gender.2da override detected.');
                         my %gender_detail=%{$twoda_obj->read2da($path{kotor}."/override/gender.2da")};
                         for my $g (keys %gender_detail) {$gender_hash1{$g}=$gender_detail{$g}{constant}}
 
@@ -7727,7 +7724,7 @@ sub Load {
                         ### spells.2da ###
                         if (-e $path{tsl}."/override/spells.2da")
                         {
-                            LogIt ('Kotor 2 spells.2da override detected.');
+                            LogInfo ('Kotor 2 spells.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/spells.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7781,7 +7778,7 @@ sub Load {
                         ### appearance.2da ###
                         if (-e $path{tsl}."/override/appearance.2da")
                         {
-                            LogIt ('Kotor 2 appearance.2da override detected.');
+                            LogInfo ('Kotor 2 appearance.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/appearance.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7810,7 +7807,7 @@ sub Load {
                         ### portraits.2da ###
                         if (-e $path{tsl}."/override/portraits.2da")
                         {
-                            LogIt ('Kotor 2 portraits.2da override detected.');
+                            LogInfo ('Kotor 2 portraits.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/portraits.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7839,7 +7836,7 @@ sub Load {
                         ### feat.2da ###
                         if (-e $path{tsl}."/override/feat.2da")
                         {
-                            LogIt ('Kotor 2 feat.2da override detected.');
+                            LogInfo ('Kotor 2 feat.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/feat.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7889,7 +7886,7 @@ sub Load {
                         ### soundset.2da ###
                         if (-e $path{tsl}."/override/soundset.2da")
                         {
-                            LogIt ('Kotor 2 soundset.2da override detected.');
+                            LogInfo ('Kotor 2 soundset.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/soundset.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7918,7 +7915,7 @@ sub Load {
                         ### skills.2da ###
                         if (-e $path{tsl}."/override/skills.2da")
                         {
-                            LogIt ('Kotor 2 skills.2da override detected.');
+                            LogInfo ('Kotor 2 skills.2da override detected.');
                             my $hashref=$twoda_obj->read2da($path{tsl}."/override/skills.2da");
                             for my $k (keys %$hashref)
                             {
@@ -7947,7 +7944,7 @@ sub Load {
                         ### classes.2da ###
                         if (-e $path{tsl}."/override/classes.2da")
                         {
-                            LogIt ('Kotor 2 classes.2da override detected.');
+                            LogInfo ('Kotor 2 classes.2da override detected.');
                             my %classes_detail2=%{$twoda_obj->read2da($path{tsl}."/override/classes.2da")};
                             for my $c (keys %classes_detail2)
                             {
@@ -7994,7 +7991,7 @@ sub Load {
                         ### gender.2da ###
                         if (-e $path{tsl}."/override/gender.2da")
                         {
-                            LogIt ('Kotor 2 gender.2da override detected.');
+                            LogInfo ('Kotor 2 gender.2da override detected.');
                             my %gender_detail=%{$twoda_obj->read2da($path{tsl}."/override/gender.2da")};
                             for my $g (keys %gender_detail) {$gender_hash2{$g}=$gender_detail{$g}{constant}}
                         }
@@ -8037,7 +8034,7 @@ sub Load {
                 ### spells.2da ###
                 if (-e $path{tjm}."/override/spells.2da")
                 {
-                    LogIt ('Kotor 2 spells.2da override detected.');
+                    LogInfo ('Kotor 2 spells.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/spells.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8091,7 +8088,7 @@ sub Load {
                 ### appearance.2da ###
                 if (-e $path{tjm}."/override/appearance.2da")
                 {
-                    LogIt ('Kotor 2 appearance.2da override detected.');
+                    LogInfo ('Kotor 2 appearance.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/appearance.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8120,7 +8117,7 @@ sub Load {
                 ### portraits.2da ###
                 if (-e $path{tjm}."/override/portraits.2da")
                 {
-                    LogIt ('Kotor 2 portraits.2da override detected.');
+                    LogInfo ('Kotor 2 portraits.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/portraits.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8149,7 +8146,7 @@ sub Load {
                 ### feat.2da ###
                 if (-e $path{tjm}."/override/feat.2da")
                 {
-                    LogIt ('Kotor 2 feat.2da override detected.');
+                    LogInfo ('Kotor 2 feat.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/feat.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8199,7 +8196,7 @@ sub Load {
                 ### soundset.2da ###
                 if (-e $path{tjm}."/override/soundset.2da")
                 {
-                    LogIt ('Kotor 2 soundset.2da override detected.');
+                    LogInfo ('Kotor 2 soundset.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/soundset.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8228,7 +8225,7 @@ sub Load {
                 ### skills.2da ###
                 if (-e $path{tjm}."/override/skills.2da")
                 {
-                    LogIt ('Kotor 2 skills.2da override detected.');
+                    LogInfo ('Kotor 2 skills.2da override detected.');
                     my $hashref=$twoda_obj->read2da($path{tjm}."/override/skills.2da");
                     for my $k (keys %$hashref)
                     {
@@ -8257,7 +8254,7 @@ sub Load {
                 ### classes.2da ###
                 if (-e $path{tjm}."/override/classes.2da")
                 {
-                    LogIt ('Kotor 2 classes.2da override detected.');
+                    LogInfo ('Kotor 2 classes.2da override detected.');
                     my %classes_detail2=%{$twoda_obj->read2da($path{tjm}."/override/classes.2da")};
                     for my $c (keys %classes_detail2)
                     {
@@ -8304,7 +8301,7 @@ sub Load {
                 ### gender.2da ###
                 if (-e $path{tjm}."/override/gender.2da")
                 {
-                    LogIt ('Kotor 2 gender.2da override detected.');
+                    LogInfo ('Kotor 2 gender.2da override detected.');
                     my %gender_detail=%{$twoda_obj->read2da($path{tjm}."/override/gender.2da")};
                     for my $g (keys %gender_detail) {$gender_hash3{$g}=$gender_detail{$g}{constant}}
                 }
