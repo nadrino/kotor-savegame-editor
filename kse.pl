@@ -358,14 +358,6 @@ if(-e "$workingdir/KSE.ini") {
     my $line = undef;
     while(<INI>){
         $line = $_;
-        if($line =~ /\[Installed\]/)         { }
-        if($line =~ /\[Paths\]/)             { }
-        if($line =~ /\[Options\]/)           { }
-
-        if($line =~ /K1_Installed=(.*)/)     { $k1_installed    = $1; }
-        if($line =~ /K2_Installed=(.*)/)     { $k2_installed    = $1; }
-        if($line =~ /TJM_Installed=(.*)/)    { $tjm_installed   = $1; }
-
         if($line =~ /K1_Path=(.*)/)          { $path{kotor}     = $1; }
         if($line =~ /K1_SavePath=(.*)/)      { $path{kotor_save}= $1; }
 
@@ -373,9 +365,6 @@ if(-e "$workingdir/KSE.ini") {
         if($line =~ /K2_SavePath=(.*)/)      { $path{tsl_save}  = $1; }
         if($line =~ /K2_SavePathCloud=(.*)/) { $path{tsl_cloud} = $1; }
         if($line =~ /TJM_Path=(.*)/)         { $path{tjm}      = $1; }
-
-        if($line =~ /Steam_Path=(.*)/)       { $path{steam}     = $1; }
-        if($line =~ /Use_K2_Cloud=(.*)/)     { $use_tsl_cloud   = $1; }
     }
     close INI;
 
@@ -629,14 +618,6 @@ if($num_args eq 2)
 
 open INI, ">", "$workingdir/KSE.ini";
 
-print INI "[Installed]\n";
-print INI "K1_Installed=$k1_installed\n";
-print INI "K2_Installed=$k2_installed\n";
-print INI "TJM_Installed=$tjm_installed\n";
-print INI "Use_K2_Cloud=$use_tsl_cloud\n";
-print INI "\n";
-print INI "[Paths]\n";
-print INI "Steam_Path=$path{'steam'}\n";
 print INI "K1_Path=$path{kotor}\n";
 print INI "K1_SavePath=$path{kotor_save}\n";
 print INI "K2_Path=$path{tsl}\n";
