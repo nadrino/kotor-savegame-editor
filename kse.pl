@@ -383,7 +383,7 @@ if(-e "$workingdir/KSE.ini") {
 }
 
 sub initKotor2{
-    LogDebug "Looking for KotOR2 game and saves folder...";
+    LogWarning "Looking for KotOR2 game and saves folder...";
 
     # Game folder
     unless( -e $path{tsl}."/chitin.key" ){
@@ -457,7 +457,7 @@ sub initKotor2{
 }
 
 sub initKotor{
-    LogDebug "Looking for KotOR game and saves folder...";
+    LogWarning "Looking for KotOR game and saves folder...";
 
     unless( -e "$path{kotor}/chitin.key" ){
         LogError "Could not find KotOR game files: $path{kotor}/chitin.key";
