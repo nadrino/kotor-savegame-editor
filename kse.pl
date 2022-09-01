@@ -129,7 +129,6 @@ sub RWhat;
 sub Inventory;
 sub Globals;
 sub WhatNow;
-sub LogIt;
 sub Populate_Level1;
 sub Populate_Skills;
 sub Populate_Feats;
@@ -634,6 +633,7 @@ print INI "[Installed]\n";
 print INI "K1_Installed=$k1_installed\n";
 print INI "K2_Installed=$k2_installed\n";
 print INI "TJM_Installed=$tjm_installed\n";
+print INI "Use_K2_Cloud=$use_tsl_cloud\n";
 print INI "\n";
 print INI "[Paths]\n";
 print INI "Steam_Path=$path{'steam'}\n";
@@ -643,9 +643,6 @@ print INI "K2_Path=$path{tsl}\n";
 print INI "K2_SavePath=$path{tsl_save}\n";
 print INI "K2_SavePathCloud=$path{tsl_cloud}\n";
 print INI "TJM_Path=undef\n";
-print INI "\n";
-print INI "[Options]\n";
-print INI "Use_K2_Cloud=$use_tsl_cloud";
 
 close INI;
 
@@ -783,7 +780,7 @@ sub What {  #called by BrowseCmd
             #my $gameversion=shift @levels;  #should be 1 or 2 for KotOR1 or KotOR2
             my $gameversion=$levels[0];
             if ($#levels == 1) {
-                print "Selected save folder: $levels[1]\n";
+                LogInfo "Selected save folder: $levels[1]";
                 # PrintScreenshot($parm1);
                 Populate_Level1($parm1);
                 Populate_Feats($parm1.'#Feats');
@@ -1170,7 +1167,7 @@ sub Populate_EquipTables{
 
         my $in = 0;
         foreach (@$array)
-        {print "ID: $in\n";
+        {LogDebug "ID: $in";
             if($array->[$in]{ID} == $id)
             {#print "Found a match: $in ID: $id\n";
                 my $gffb = Bioware::GFF->new();
@@ -1216,7 +1213,7 @@ sub Populate_EquipTables{
                     $hah{TextureVar}    = $gffb->{Main}{Fields}[$gffb->{Main}->get_field_ix_by_label('TextureVar')]{Value};
                 }
 
-                foreach(sort keys %hah) { print "Key: $_\tValue: $hah{$_}\n"; }
+                foreach(sort keys %hah) { LogDebug "Key: $_\tValue: $hah{$_}"; }
 
                 $array->[$in]{Fields}[$array->[$in]->get_field_ix_by_label('AddCost')]{Value}        = $hah{AddCost};
                 $array->[$in]{Fields}[$array->[$in]->get_field_ix_by_label('BaseItem')]{Value}       = $hah{BaseItem};
@@ -2227,7 +2224,7 @@ sub Populate_AreaContainer{
     my $containerType = $treeLevels[3];
     my $registeredPath = GetRegisteredPath($gameVersion);
 
-    print "Populating ".$containerType."...";
+    LogInfo "Populating ".$containerType."...";
 
     # Getting back the save data
     my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
@@ -2248,13 +2245,10 @@ sub Populate_AreaContainer{
     elsif( $containerType eq 'Doors' ){
         $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
     }
-    else{
-        print "\n";
-        return;
-    }
+    else{ return; }
 
     my $nbContainers = scalar @$containerList;
-    print " ".$nbContainers." containers have been found.\n";
+    LogInfo " ".$nbContainers." containers have been found.";
 
     my $iContainer = 0;
     foreach(@$containerList) {
@@ -2282,7 +2276,7 @@ sub Populate_AreaContainer{
 
             my $itemList = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('ItemList')]{Value};
 
-            print "-> ".$containerDisplayTitle."\n";
+            LogDebug "-> ".$containerDisplayTitle;
             $tree->add(
               $treeItem."#".$iContainer."_".$containerTag,
               -text=>$containerDisplayTitle,
@@ -2313,7 +2307,7 @@ sub Populate_AreaContainer{
                 my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
                 my $itemTitle	= sprintf( "%s [%d] (%s)", $itemName, $itemStack, $itemTag );
 
-                print "     ".$itemTitle."\n";
+                LogDebug "     ".$itemTitle;
                 $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem, -text=>$itemTitle, -data=>'can modify');
                 $tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem);
                 $iItem++;
@@ -2521,7 +2515,7 @@ sub CommitChanges {
     my $gv;
     my $gm;
 
-    print "Committing changes...\n";
+    LogWarning "Committing changes...";
 
     my @parms = split /#/, $treeitem;
     #	print join /\n/, @parms;
@@ -2619,7 +2613,7 @@ sub CommitChanges {
     }
 
     # insert into erf_mod the new lastModule.git file
-    print "lastModuleGitName = ".$git_gff->{'modulename'}."\n";
+    LogDebug "lastModuleGitName = ".$git_gff->{'modulename'};
     unless (my $tmp=$erf_mod->import_resource($tmpFile_LastModuleGitGff->{'fn'}, $git_gff->{'modulename'}.'.git')) {
         die "Failed to import ".$git_gff->{'modulename'}.".git into last module of savegame";
     }
@@ -2698,7 +2692,7 @@ sub CommitChanges {
     my @tmpsig =glob "*.sig";
     LogInfo("Scalar of tmpsig is ". scalar @tmpsig);
     if (scalar @tmpsig) {
-        print ".sig files have been detected (XBox). Regenerating...\n";
+        LogWarning ".sig files have been detected (XBox). Regenerating...";
         for my $t (@tmpsig) { LogInfo "sig file detection: $t" }
         my $authkey;
         if ($gameversion==1) {
@@ -2775,11 +2769,11 @@ sub CommitChanges {
         syswrite $fho, $hmac_out;
         close $fho;
         LogInfo ("SAVE_DATA.sig created.");
-        print ".sig files have been regenerated.\n";
+        LogInfo ".sig files have been regenerated.";
     }
 
 
-    print "RELOADING DATA\n";
+    LogDebug "RELOADING DATA";
     LoadData($treeitem);
 
     # # Reload
@@ -2810,7 +2804,7 @@ sub CommitChanges {
     $mw->Dialog(-title=>'Save Successful',-text=>"File $registered_path\\$gamedir\\savegame.sav saved successfully.",-font=>['MS Sans Serif','8'],-buttons=>['Ok'])->Show();
     # exec($^X, $0, @ARGV);
 
-    print "Commit changes has been done.\n";
+    LogInfo "Commit changes has been done.";
 
 }
 
@@ -4738,7 +4732,7 @@ sub SpawnDoorWidgets {
             else{
                 $openState = 0;
             }
-            print "Updating ".$doorName." OpenState value to: ".$openState."\n";
+            LogInfo "Updating ".$doorName." OpenState value to: ".$openState;
             $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenState')]{Value}=$openState;
         }
 
@@ -4751,7 +4745,7 @@ sub SpawnDoorWidgets {
             else{
                 $locked = 0;
             }
-            print "Updating ".$doorName." Locked value to: ".$locked."\n";
+            LogInfo "Updating ".$doorName." Locked value to: ".$locked;
             $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value}=$locked;
         }
 
@@ -5364,7 +5358,7 @@ sub SpawnAddInventoryWidgets {
             my $this_item_text = $templatelist->entrycget($selected_index, -text);
             LogInfo("Adding Item: $this_item_text");
             my $selected_uti = (split / /, $this_item_text)[0] . ".uti";
-            print "Loading uti file: " . $selected_uti . "\n";
+            LogInfo "Loading uti file: " . $selected_uti;
             my $uti_gff = Bioware::GFF->new();
             if (-e "$registered_path\\override\\$selected_uti") {
                 $uti_gff->read_gff_file("$registered_path\\override\\$selected_uti");
@@ -5411,7 +5405,7 @@ sub SpawnAddInventoryWidgets {
             # If the itemList is empty, create the item struct from scratch
             if ($isEmpty || $treeitem =~ /#Inventory#/) {
 
-                print "> Creating new item from scratch\n";
+                LogInfo "> Creating new item from scratch";
 
                 if( $treeitem =~/#Area#Placeables#/ ){
                     $newItemStruct = Bioware::GFF::Struct->new('ID'=>9, 'StructIndex'=>undef, 'Fields'=>[]);
@@ -5493,13 +5487,13 @@ sub SpawnAddInventoryWidgets {
             }
             else {
 
-                print "Making a copy of the last item in the list\n";
+                LogInfo "Making a copy of the last item in the list";
                 my $lastItemStruct = @{$itemList}[-1];
 
                 # Check if the id is incrementing for each item in the list
                 my $hasIncrementingId = 0;
                 if (scalar @{$itemList} >= 2 and @{$itemList}[-1]->{'ID'} - 1 == @{$itemList}[-2]->{'ID'}) {
-                    print "ID Incrementation detected\n";
+                    LogDebug "ID Incrementation detected";
                     $hasIncrementingId = 1;
                     $newItemStruct = Bioware::GFF::Struct->new('ID' => ($lastItemStruct->{'ID'} + 1));
                 }
@@ -5509,7 +5503,7 @@ sub SpawnAddInventoryWidgets {
 
                 $newItemStruct->{Fields} = ();
 
-                print "Reading each field in .uti file, and propagate changes...\n";
+                LogInfo "Reading each field in .uti file, and propagate changes...";
                 for my $lastItemStructField (@{$lastItemStruct->{'Fields'}}) {
                     my $fieldLabel = $lastItemStructField->{'Label'};
                     # print "  Field: ".$fieldLabel."\n";
@@ -5568,7 +5562,7 @@ sub SpawnAddInventoryWidgets {
             else{
                 push @{$itemList}, $newItemStruct;
             }
-            print "NOW = ".(scalar @{$itemList})."\n";
+            LogDebug "NOW = ".(scalar @{$itemList});
 
             # Printing the new item in the displayed list
             if ($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~ /#Area#Stores#/) {
@@ -5586,7 +5580,7 @@ sub SpawnAddInventoryWidgets {
                 my $stack = $newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('StackSize')]{Value};
                 my $prettyItem = sprintf("%-32s%s  [%d]", $tag, $item_name, $stack);
 
-                print "Added: " . $prettyItem . "\n";
+                LogInfo "Added: " . $prettyItem;
                 $tree->add($treeitem . "#" . $tag, -text => $prettyItem, -data => 'can modify');
             }
             else {
@@ -5959,84 +5953,6 @@ sub Generate_Master_Item_List {
     $mw->Unbusy;
 }
 
-sub LogIt {
-    unless ($debug_flag) {return;}
-    $loginfo=shift;
-    my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
-
-    open (LOG, ">>", $workingdir . "\\$Logfile");
-    print LOG ($mon+1, "/",$mday, "/",$year+1900, "--", $hour, ":",$min, ":",$sec, "= ",$loginfo, "\n");
-    print ($mon+1, "/",$mday, "/",$year+1900, "--", $hour, ":",$min, ":",$sec, "= ",$loginfo, "\n");
-    close LOG;
-    return;
-}
-
-# sub LogMessage{
-#     my $logLevel = shift;
-#     my $logMessage = shift;
-#
-#     my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
-#     my $logTime = "".($year+1900)."/".($mon+1)."/".$mday." ".$hour.":".$min.":".$sec;
-#
-#     my $logLevelStr;
-#     if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; }
-#     elsif($logLevel == 1){ $logLevelStr = "[Error]"; }
-#     elsif($logLevel == 2){ $logLevelStr = "[Alert]"; }
-#     elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; }
-#     elsif($logLevel == 4){ $logLevelStr = "[Info ]"; }
-#     elsif($logLevel == 5){ $logLevelStr = "[Debug]"; }
-#     elsif($logLevel == 6){ $logLevelStr = "[Trace]"; }
-#
-#     my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
-#
-#     open (LOG, ">>", $workingdir . "\\$Logfile");
-#     print LOG $logStr;
-#     close LOG;
-#
-#     print $logStr;
-#
-#     return;
-# }
-#
-# sub LogFatal{
-#     my $logMessage = shift;
-#     LogMessage(0, $logMessage);
-#     die "`Stopping after fatal error.";
-# }
-# sub LogError{
-#     my $logMessage = shift;
-#     LogMessage(1, $logMessage);
-# }
-# sub LogAlert{
-#     my $logMessage = shift;
-#     LogMessage(2, $logMessage);
-# }
-# sub LogWarning{
-#     my $logMessage = shift;
-#     LogMessage(3, $logMessage);
-# }
-# sub LogInfo{
-#     my $logMessage = shift;
-#     LogMessage(4, $logMessage);
-# }
-# sub LogDebug{
-#     my $logMessage = shift;
-#     LogMessage(5, $logMessage);
-# }
-# sub LogTrace{
-#     my $logMessage = shift;
-#     LogMessage(6, $logMessage);
-# }
-
-sub LogErr {
-    unless ($debug_flag) {return;}
-    my $error = shift;
-    my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
-    open (ERRLOG, ">>", $workingdir . "\\$Errlog");
-    print ERRLOG ($mon+1, "/",$mday, "/",$year+1900, "--", $hour, ":",$min, ":",$sec, "= ",$error, "\n");
-    close ERRLOG;
-    return;
-}
 
 sub Tk::Error   #custom error handler --> error log, and error msg
 {my $w = shift;
@@ -6049,8 +5965,7 @@ sub Tk::Error   #custom error handler --> error log, and error msg
     chomp($error);
     $mw->Dialog(-title=>'Error occurred',-text=>"Error msg: $error\n ",-font=>['MS Sans Serif','8'],-buttons=>['Ok'])->Show();
     $mw->Dialog(-title=>'Details of Error ',-text=> join("\n " , @_)."\n",-font=>['MS Sans Serif','8'],-buttons=>['Ok'])->Show();
-    # warn "Tk::Error: $error\n " . join("\n ",@_)."\n";  #writes to LogIt --Actually, it doesn't. The next line writes to the error log.
-    LogErr("Tk::Error: $error\n " . join("\n ",@_)."\n");
+    LogError("Tk::Error: $error\n " . join("\n ",@_));
 }
 sub RWhat {
     my $w=shift;
@@ -6197,7 +6112,7 @@ sub GetRegisteredSavePath {
     return $registered_path
 }
 sub LoadData {
-    print "Loading data...\n";
+    LogInfo "Loading save data...";
 
     my $treeitem=shift;
     my $root='#'.(split /#/,$treeitem)[1].'#'.(split /#/,$treeitem)[2];
@@ -6283,7 +6198,7 @@ sub LoadData {
     # DEV
     for my $resource (@{$erf->{'resources'}}) {
         my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
-        print "RESOURCE: $res_check\n";
+        LogDebug "RESOURCE: $res_check";
     }
 
 
@@ -6336,7 +6251,7 @@ sub LoadData {
         'GFF-inv'=>$gff_inv
       }
     );
-    print "Data loaded.\n";
+    LogInfo "Data loaded.";
 }
 sub PrintScreenshot {
 
@@ -7332,7 +7247,7 @@ sub Load {
             my $gm;
 
             my @parms = split /#/, $treeitem;
-            print join /\n/, @parms;
+            LogDebug join /\n/, @parms;
 
             if ($parms[0] == 1) { $gv = "Kotor 1"; }
             if ($parms[0] == 2) { $gv = "Kotor 2/TSL"; }
@@ -7483,7 +7398,7 @@ sub Load {
             our $twoda_obj=Bioware::TwoDA->new();
             if($open{1} < 1)
             {
-                print "Loading KotOR data...\n";
+                LogInfo "Loading KotOR data...";
                 $open{1} = 1;
                 if ($k1_installed)
                 {
@@ -7702,10 +7617,9 @@ sub Load {
 
                 sub Pop_TSL
                 {
-                    #   print "hi! 2\n";
                     if($open{2} < 1)
                     {
-                        print "Loading KotOR 2 - TSL data...\n";
+                        LogInfo "Loading KotOR 2 - TSL data...";
                         $open{2} = 1;
 
                         our $twoda_obj=Bioware::TwoDA->new();
@@ -8012,10 +7926,9 @@ sub Load {
 
         sub Pop_TJM
         {
-            #    print "hi! 3\n";
             if($open{3} < 1)
             {
-                print "Loading KotOR III - The Jedi Masters data...\n";
+                LogInfo "Loading KotOR III - The Jedi Masters data...";
                 $open{3} = 1;
 
                 our $twoda_obj=Bioware::TwoDA->new();
