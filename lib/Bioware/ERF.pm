@@ -15,6 +15,7 @@ use File::Copy qw(copy);
 use File::Basename;
 use Data::Dumper;
 use Win32API::File::Temp;
+use Logger;
 
 
 #line 86
@@ -189,7 +190,7 @@ sub read_erf {
     if ($header eq "_ASPRCOMP_") {
         $self->{'isCompressed'} = 1;
 
-        printf "Uncompressing ERF: ".basename($erf_filename)."...\n";
+        LogWarning "Uncompressing ERF: ".basename($erf_filename)."...";
         my $inflateHandle = IO::Uncompress::Inflate->new($realfh, AutoClose => 1)
           or die "Unable to open decompression stream!\n";
 
@@ -278,7 +279,7 @@ sub read_erf {
          $self->{'resources'}[$resource_index]{'new_size'}=$self->{'resources'}[$resource_index]{'res_size'};
     }
 
-    # print Dumper($self);
+    # LogTrace Dumper($self);
     close $fh;
     return 1;
 }
@@ -286,7 +287,7 @@ sub getfiles
 {
     my $self = shift;
     my $a = $self->{Files};
-#    print "Rim:\n" . join "\n", @$a;
+#    LogTrace "Rim:\n" . join "\n", @$a;
     return $a;
 }
 sub get_resource_id_by_type{
@@ -480,12 +481,12 @@ sub import_resource {
         my %reversed = reverse %res_types;
         unless (exists $reversed{$new_ext}) {
             close $in_fh;
-            return 0; print "Reverse failed\n";
+            return 0; LogError "Reverse failed";
         }
         my $new_res_type=$reversed{$new_ext};
         $res_ix=scalar @{$self->{'resources'}};
         my $new_offset=$self->{resources}[$res_ix-1]{'res_offset'}+$self->{resources}[$res_ix-1]{'res_size'};
-        if($n == 1) { print "ResRef: $new_res_ref\nRes Type: $new_res_type\nRes Extension: $new_ext\nRes ID: $res_ix\nRes Size: " . (-s $in_fh) . "\n\n"; }
+        if($n == 1) { LogInfo "ResRef: $new_res_ref\nRes Type: $new_res_type\nRes Extension: $new_ext\nRes ID: $res_ix\nRes Size: " . (-s $in_fh) . "\n"; }
         my $hashref={'res_ref'=>$new_res_ref,
                      'res_id'=>$res_ix,
                      'res_type'=>$new_res_type,
@@ -730,7 +731,7 @@ $r++;
     close $out_fh;
 
     if( $self->{'isCompressed'} ){
-        print "Recompressing ERF file '".basename($output_file)."'...\n";
+        LogWarning "Recompressing ERF file '".basename($output_file)."'...";
         my $input = IO::File->new( "<$output_file" )
           or die "Cannot open '$output_file': $!\n" ;
         my $buffer ;

@@ -18,6 +18,7 @@ use IO::File;
 use File::Copy qw(copy);
 use File::Basename;
 use Win32API::File::Temp;
+use Logger;
 
 # set version
 $VERSION=0.68; #Made more robust in the Bioware::GFF::Field::writeField sub for Lists that have only 1 or 0 structs
@@ -153,7 +154,7 @@ sub read_gff_file($) {
     read $realfh, my $header, 10;
     if ($header eq "_ASPRCOMP_") {
         $gff->{isCompressed} = 1;
-        printf "Uncompressing GFF: ".basename($fn)."...\n";
+        LogWarning "Uncompressing GFF: ".basename($fn)."...";
         my $inflateHandle = IO::Uncompress::Inflate->new($realfh, AutoClose => 1)
           or die "Unable to open decompression stream!\n";
 
@@ -201,7 +202,7 @@ sub write_gff_file($;$) {
     }
 
     if ( $gff->{isCompressed} ){
-        print "Recompressing GFF file '".basename($fn)."'...\n";
+        LogWarning "Recompressing GFF file '".basename($fn)."'...";
         my $input = IO::File->new( "<$fn" )
           or die "Cannot open '$fn': $!\n" ;
         my $buffer ;
