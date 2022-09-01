@@ -5,6 +5,8 @@ use warnings;
 
 use Exporter;
 use Cwd;
+use Win32::Console::ANSI;
+use Term::ANSIColor;
 
 our @ISA= qw( Exporter );
 
@@ -48,21 +50,22 @@ sub LogMessage{
   my $logTime = sprintf("%04s/%02s/%02s %02s:%02s:%02s", $year+1900, $mon+1, $mday, $hour, $min, $sec);
 
   my $logLevelStr;
-  if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; }
-  elsif($logLevel == 1){ $logLevelStr = "[Error]"; }
-  elsif($logLevel == 2){ $logLevelStr = "[Alert]"; }
-  elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; }
-  elsif($logLevel == 4){ $logLevelStr = "[Info ]"; }
-  elsif($logLevel == 5){ $logLevelStr = "[Debug]"; }
-  elsif($logLevel == 6){ $logLevelStr = "[Trace]"; }
+  my $logLevelFmt;
+  if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; $logLevelFmt = color("ON_BRIGHT_RED"); }
+  elsif($logLevel == 1){ $logLevelStr = "[Error]"; $logLevelFmt = color("BRIGHT_RED"); }
+  elsif($logLevel == 2){ $logLevelStr = "[Alert]"; $logLevelFmt = color("BRIGHT_MAGENTA"); }
+  elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; $logLevelFmt = color("BRIGHT_YELLOW"); }
+  elsif($logLevel == 4){ $logLevelStr = "[Info ]"; $logLevelFmt = color("BRIGHT_GREEN");  }
+  elsif($logLevel == 5){ $logLevelStr = "[Debug]"; $logLevelFmt = color("BRIGHT_BLUE"); }
+  elsif($logLevel == 6){ $logLevelStr = "[Trace]"; $logLevelFmt = color("BRIGHT_CYAN"); }
 
   my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
 
   open (LOG, ">>", $workingdir . "\\$Logfile");
-  print LOG $logStr;
+  print LOG $logTime." ".$logLevelStr.": ".$logMessage."\n";
   close LOG;
 
-  print $logStr;
+  print $logTime." ".$logLevelFmt.$logLevelStr.color("RESET").": ".$logMessage."\n";
 
   return;
 }
