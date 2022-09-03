@@ -4902,7 +4902,8 @@ sub SpawnAddInventoryWidgets {
         my $selectedContainerId;
         foreach(@$containerList) {
             my $containerTag = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('Tag')]{Value};
-            if($iContainer."_".$containerTag == $containerTreeName){
+            my $containerTreeNameExpected = $iContainer."_".$containerTag;
+            if( $containerTreeName == $containerTreeNameExpected ){
                 $selectedContainerId = $iContainer;
                 # $containerName = $containerTag;
             }
