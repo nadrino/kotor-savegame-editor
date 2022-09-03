@@ -604,11 +604,9 @@ my $journal3;
 read_global_jrls();
 
 my $num_args = $#ARGV + 1;
-if($num_args eq 2)
-{
+if($num_args eq 2){
     # If the first argument is equal to /DeleteOldVersion continue
-    if($ARGV[0] eq "/DeleteOldVersion")
-    {
+    if($ARGV[0] eq "/DeleteOldVersion"){
         # Delete old version
         unlink($ARGV[1]);
     }
@@ -643,9 +641,6 @@ sub Populate_tree
     if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==2))) {
     }
     ############################################################
-
-
-
 }
 sub updscrl {
     $bandaid++;
@@ -5932,11 +5927,11 @@ sub Generate_Master_Item_List {
 }
 
 
-sub Tk::Error   #custom error handler --> error log, and error msg
-{my $w = shift;
+# custom error handler --> error log, and error msg
+sub Tk::Error {
+    my $w = shift;
     my $error = shift;
-    if (Exists($w))
-    {
+    if (Exists($w)) {
         my $grab = $w->grab('current');
         $grab->Unbusy if (defined $grab);
     }
@@ -7045,8 +7040,6 @@ sub try_extracted_data {
             return Bioware::BIF->new($rootpath,$parm1,$parm2);
         }
     }
-
-
 }
 
 sub Load {
@@ -8209,4 +8202,7 @@ sub Load {
                         $gender_hash3{$g}=$gender_detail{$g}{constant};
                     }
                 }
-            }}}}
+            }
+        }
+    }
+}
