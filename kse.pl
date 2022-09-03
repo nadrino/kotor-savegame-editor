@@ -90,6 +90,8 @@
 # C:\Users\COMPUTER NAME\AppData\Local\VirtualStore\Program Files\LucasArts\SWKotOR
 
 use lib 'lib';
+use warnings;
+use strict;
 
 use feature 'switch';
 use Bioware::GFF 0.64;
@@ -107,7 +109,8 @@ use Tk::DynaTabFrame;
 use MIME::Base64;
 use Digest::HMAC_SHA1 qw(hmac_sha1);
 use Cwd;
-use MyAppData;
+use MyAppData;;
+use KseInitializer;
 use Logger;
 
 # require 'lib/Logger.pm';
@@ -136,7 +139,6 @@ sub Populate_Classes;
 sub Populate_EquipTables;
 sub ReadSavenfoRes;
 sub ReadPartyTable;
-ReadSaveGame;
 
 use Tk;
 use Tk::Tree;
@@ -303,9 +305,6 @@ our $globals_memorized;
 our $old_tix_image;
 our %path=('kotor'=>undef, 'tsl'=>undef, 'tsl_save'=>undef, 'tsl_cloud'=>undef, 'tjm'=>undef);
 our %oldpath=('kotor'=>undef, 'tsl'=>undef, 'tjm'=>undef);
-our $k1_installed=0;
-our $k2_installed=0;
-our $tjm_installed=0;
 my $picture_label;
 my $picture_label_photo;
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -336,222 +335,18 @@ $tree->bind('<ButtonPress-3>'=>\&RWhat);
 
 my $versionlabel=$mw->Label(-text=>$version)->place(-relx=>890/$x,-rely=>590/$y,-anchor=>'se'); #create version label
 
-
-
-my $use_tsl_cloud = 0;
-
-# if((-e "$workingdir/KSE.ini") == 0)
-# {
-# 	my @o = ("KPF.exe", "-2ini", "-logfile");
-# 	system(@o);
-# }
-
 our $workingdir;
 $workingdir = getcwd;
 $workingdir =~ s#/#\\#g;
 
-
-if(-e "$workingdir/KSE.ini") {
-    LogDebug "Reading KSE.ini...";
-    open INI, "<", "$workingdir/KSE.ini";
-
-    my $line = undef;
-    while(<INI>){
-        $line = $_;
-        if($line =~ /K1_Path=(.*)/)          { $path{kotor}     = $1; }
-        if($line =~ /K1_SavePath=(.*)/)      { $path{kotor_save}= $1; }
-
-        if($line =~ /K2_Path=(.*)/)          { $path{tsl}       = $1; }
-        if($line =~ /K2_SavePath=(.*)/)      { $path{tsl_save}  = $1; }
-        if($line =~ /K2_SavePathCloud=(.*)/) { $path{tsl_cloud} = $1; }
-        if($line =~ /TJM_Path=(.*)/)         { $path{tjm}      = $1; }
-    }
-    close INI;
-
-    LogDebug "INI closed";
-}
-
-sub initKotor2{
-    LogWarning "Looking for KotOR2 game and saves folder...";
-
-    # Game folder
-    unless( -e $path{tsl}."/chitin.key" ){
-
-        LogWarning "TSL not found. Attempt using AppData info...";
-        my $appdata_obj = MyAppData->new();
-        my $appdata = $appdata_obj->getappdata();
-
-        if( -e $appdata . "/SWKotOR2/chitin.key" ){
-            $path{tsl} = $appdata . "/SWKotOR2";
-            LogInfo "Found with appdata: $path{tsl}";
-        }
-        else{
-            # LogInfo "Could not find TSL game folder. Asking user...";
-            # unless ($browsed_path=BrowseForFolder('Locate TSL installation directory')) {
-            #     LogError "Path not specified.";
-            #     return 0;
-            # }
-
-            if( -e $browsed_path."/chitin.key" ){ $path{tsl} = $browsed_path; }
-            else{
-                LogError "Kotor2 path not found.";
-                return 0;
-            }
-        }
-
-    }
-    LogInfo "Found KotOR2 game files at $path{tsl}";
-
-    # Save folder
-    my $tslSavesFound = 0;
-    if( $path{tsl_save} eq "" ){
-        $path{tsl_save} = $path{tsl}."\\Saves";
-    }
-    unless( opendir SAVDIR, $path{tsl_save} ){ LogError "KotOR2 game saves not found at: $path{tsl_save}"; }
-    else{ LogInfo "Found KotOR2 game saves at $path{tsl_save}"; $tslSavesFound = 1; }
-    close SAVDIR;
-
-    $use_tsl_cloud = 0;
-    if( $path{'tsl_cloud'} eq "" ){
-        $path{'tsl_cloud'} = $path{tsl}."\\cloudsaves";
-    }
-
-    if( -e $path{'tsl_cloud'}."\\steam_autocloud.vdf" ){
-        my $cloudSaveBaseDir = $path{'tsl_cloud'};
-        if( opendir(CLOUDSAVEDIR, $cloudSaveBaseDir)){
-            $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$cloudSaveBaseDir\\$_"} readdir(CLOUDSAVEDIR))[0];
-        }
-        closedir(CLOUDSAVEDIR); # Release handle
-    }
-
-    if( opendir CLOUDSAVEDIR, $path{'tsl_cloud'} ){
-        LogInfo "Found KotOR2 game cloud saves at $path{'tsl_cloud'}";
-        $use_tsl_cloud = 1;
-    }
-    else{ $use_tsl_cloud = 0; }
-    closedir(CLOUDSAVEDIR);
-
-    # # Failed to locate either saves directory, alert the user
-    if($tslSavesFound == 0 && $use_tsl_cloud == 0)
-    {
-        $mw->messageBox(-title=>'Directory not found',
-          -message=>'Could not find saves or Cloud saves for KotOR2',
-          -type=>'Ok');
-
-        LogError('KSE failed to find the saves or Cloud saves for KotOR2');
-        return 0;
-    }
-
-    return 1;
-}
-
-sub initKotor{
-    LogWarning "Looking for KotOR game and saves folder...";
-
-    unless( -e "$path{kotor}/chitin.key" ){
-        LogError "Could not find KotOR game files: $path{kotor}/chitin.key";
-        return 0;
-    }
-    LogInfo "Found KotOR game files at $path{kotor}";
-
-    # by default
-    if ( $path{kotor_save} eq "" ){ $path{kotor_save} = $path{kotor}."\\saves"; }
-
-    unless (opendir SAVDIR, $path{kotor_save}) {
-        #saves directory not found
-        $mw->messageBox(-title=>'Directory not found',
-          -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
-        LogError ('KSE could not find saves directory for KotOR1.' . "\n");
-        close SAVDIR;
-        return 0;
-    }
-    close SAVDIR;
-
-    # at this point, everything should be fine.
-    LogInfo "Found KotOR game saves at $path{kotor_save}";
-    return 1;
-}
-
-# If not found, ask if it's installed
-#if ($tjm_installed == 0) {
-#    my $Query=$mw->Dialog(-title=>"Do you have The Jedi Masters installed?",-text=>"Please verify that TJM is installed...",-font=>['MS Sans Serif','8'],-buttons=>['Yes','No'])->Show();
-#    if($Query eq 'Yes')
-#    {
-#	#Browse, since it isn't in the registry...
-#	exit unless ($browsed_path=BrowseForFolder('Locate TJM directory'));
-#	if (-e $browsed_path."/TJM.exe") {$tjm_installed=1, $path{tjm}=$browsed_path;}
-#    }
-#    if($Query eq 'No') {$tjm_installed = 2;}
-#}
-
-#print $tjm_installed . "\n";
-
-#browse if neither can be found in registry
-#if ($k1_installed == 0)
-#{
-#  unless ($browsed_path=BrowseForFolder('Locate KotOR installation directory'))
-#  {
-#      my $Query=$mw->Dialog(-title=>"Warning",-text=>"You have cancelled out of the folder window.\n You will not be able to edit saved games for KotOR 1.\n Do you wish to proceed?",-font=>['MS Sans Serif','8'],-buttons=>['Yes','No'])->Show();
-#
-#      if ($Query eq 'No') { $browsed_path=BrowseForFolder('Locate Kotor installation directory'); }
-#      else
-#      {
-#          $browsed_path = undef;
-#          $k1_installed = -1;
-#      }
-#  }
-#
-#  if(defined($browsed_path))
-#  {
-#      if (-e $browsed_path."/chitin.key")  { $k1_installed=1; $path{kotor}=$browsed_path;}
-#  }
-#}
-
-#if ($k2_installed == 0)
-#{
-#  unless ($browsed_path=BrowseForFolder('Locate TSL installation directory'))
-#  {
-#      my $Query=$mw->Dialog(-title=>"Warning",-text=>"You have cancelled out of the folder window.\n You will not be able to edit saved games for KotOR 2.\n Do you wish to proceed?",-font=>['MS Sans Serif','8'],-buttons=>['Yes','No'])->Show();
-#
-#      if ($Query eq 'No') { $browsed_path=BrowseForFolder('Locate TSL installation directory'); }
-#      else
-#      {
-#          $browsed_path = undef;
-#          $k2_installed = -1;
-#      }
-#  }
-#
-#  if(defined($browsed_path))
-#  {
-#      if (-e $browsed_path."/chitin.key")   { $k2_installed=1; $path{tsl}=$browsed_path;}
-#  }
-#}
-
-#print $tjm_installed . "\n";
-
-#look for presence of save game folder
-
-
-
-
-$k1_installed = initKotor();
-$k2_installed = initKotor2();
-
-if (-e $path{tjm}."/saves") {
-    if(!(opendir SAVDIR3, $path{tjm}."/saves")) {                                             #saves directory not found
-        $mw->messageBox(-title=>'Directory not found',
-          -message=>'Could not find saves directory for TJM',-type=>'Ok');
-        LogError ('KSE could not find saves directory for TJM.');
-        $tjm_installed=0;
-    }
-    close SAVDIR3;
-}
+our $kseInitializer = KseInitializer->new($mw);
+$kseInitializer->initialize();
 
 $tree->add('#',-text=>'SAVEGAMES');
-$tree->add('#'.(++$tIndex),-text=>'Knights of the Old Republic');
-$tree->add('#'.(++$tIndex),-text=>'The Sith Lords');
-if($use_tsl_cloud == 1) { $tree->add('#'.(++$tIndex), -text=>'The Sith Lords - Cloud'); }
-if($tjm_installed == 1) { $tree->add('#'.(++$tIndex),-text=>'The Jedi Masters');}
+$tree->add('#1',-text=>'Knights of the Old Republic');
+$tree->add('#2',-text=>'The Sith Lords');
+if($kseInitializer->{use_tsl_cloud} == 1) { $tree->add('#3', -text=>'The Sith Lords - Cloud'); }
+if($kseInitializer->{tjm_installed} == 1) { $tree->add('#4',-text=>'The Jedi Masters');}
 
 #{
 #my $z0='861682243909523251';
@@ -579,17 +374,19 @@ if($tjm_installed == 1) { $tree->add('#'.(++$tIndex),-text=>'The Jedi Masters');
 #}
 #}
 
-if($k1_installed) { Load(1); }
-if($k2_installed) { Load(2); }
-if($use_tsl_cloud == 1) { Load(3); }
-if($tjm_installed == 1) { LogDebug('TJM is Loading'); Load(4); }
-$tree->autosetmode();                                                                        #show the [+] symbols
+if($kseInitializer->{k1_installed}) { Load(1); }
+if($kseInitializer->{k2_installed}) { Load(2); }
+if($kseInitializer->{use_tsl_cloud} == 1) { Load(3); }
+if($kseInitializer->{tjm_installed} == 1) { LogDebug('TJM is Loading'); Load(4); }
 
-if($k1_installed) { $tree->close('#1'); }
-if($k2_installed) { $tree->close('#2'); }
-if($use_tsl_cloud == 1) { $tree->close('#3'); }
-if($tjm_installed == 1 && $use_tsl_cloud == 0) { $tree->close('#3'); }
-if($tjm_installed == 1 && $use_tsl_cloud == 1) { $tree->close('#4'); }
+#show the [+] symbols
+$tree->autosetmode();
+
+if($kseInitializer->{k1_installed}) { $tree->close('#1'); }
+if($kseInitializer->{k2_installed}) { $tree->close('#2'); }
+if($kseInitializer->{use_tsl_cloud} == 1) { $tree->close('#3'); }
+if($kseInitializer->{tjm_installed} == 1 && $kseInitializer->{use_tsl_cloud} == 0) { $tree->close('#3'); }
+if($kseInitializer->{tjm_installed} == 1 && $kseInitializer->{use_tsl_cloud} == 1) { $tree->close('#4'); }
 our @spawned_widgets;                                                                            #for later...
 
 Populate_tree();
@@ -614,16 +411,6 @@ if($num_args eq 2){
 
 # system 1, "updater.exe", "/Version", $version, "/LaunchFromApplication";
 
-open INI, ">", "$workingdir/KSE.ini";
-
-print INI "K1_Path=$path{kotor}\n";
-print INI "K1_SavePath=$path{kotor_save}\n";
-print INI "K2_Path=$path{tsl}\n";
-print INI "K2_SavePath=$path{tsl_save}\n";
-print INI "K2_SavePathCloud=$path{tsl_cloud}\n";
-print INI "TJM_Path=undef\n";
-
-close INI;
 
 LogInfo "Starting main loop...";
 MainLoop;
@@ -638,7 +425,7 @@ sub Populate_tree
 
     ################################################################################
 
-    if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==2))) {
+    if ($kseInitializer->{k2_installed} && ((!defined($branch_to_populate))||($branch_to_populate==2))) {
     }
     ############################################################
 }
@@ -679,9 +466,9 @@ sub What {  #called by BrowseCmd
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
 
     my $ent = $parms[2];
     my $su = $_;
@@ -769,19 +556,19 @@ sub What {  #called by BrowseCmd
                 elsif ($levels[2] eq 'NPCs')      { Populate_NPCs($parm1)    }
                 elsif ($levels[2] eq 'Globals')   {
                     if ($gameversion==1) {
-                        Read_Global_Vars("$path{kotor_save}\\$levels[1]",$parm1)
+                        Read_Global_Vars("$kseInitializer->{path}->{kotor_save}\\$levels[1]",$parm1)
                     }
                     elsif ($gameversion==2) {
-                        Read_Global_Vars("$path{tsl_save}\\$levels[1]",$parm1)
+                        Read_Global_Vars("$kseInitializer->{path}->{tsl_save}\\$levels[1]",$parm1)
                     }
-                    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-                        Read_Global_Vars("$path{tjm}\\saves\\$levels[1]",$parm1)
+                    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+                        Read_Global_Vars("$kseInitializer->{path}->{tjm}\\saves\\$levels[1]",$parm1)
                     }
-                    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-                        Read_Global_Vars("$path{tsl_cloud}\\$levels[1]",$parm1)
+                    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+                        Read_Global_Vars("$kseInitializer->{path}->{tsl_cloud}\\$levels[1]",$parm1)
                     }
                     elsif ($gameversion==4) {
-                        Read_Global_Vars("$path{tjm}\\saves\\$levels[1]",$parm1)
+                        Read_Global_Vars("$kseInitializer->{path}->{tjm}\\saves\\$levels[1]",$parm1)
                     }
                 }
                 elsif ($levels[2] eq 'Inventory') { Populate_Inventory($parm1) }
@@ -818,8 +605,8 @@ sub Populate_EquipTables{
 
     if ($parms[1] == 1) { $gv = "Kotor 1";     $g = "kotor"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; $g = "tsl";   }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; $g = "tjm";   }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; $g = "tsl"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; $g = "tjm";   }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; $g = "tsl"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; $g = "tjm"; }
 
     my $ent = $parms[2];
@@ -852,7 +639,7 @@ sub Populate_EquipTables{
     my @options_human;
     my @options_droid;
     my $id;
-    if($load{$gameversion} == 0) { Generate_Master_Item_List($gameversion); }
+    if( Load($gameversion) == 0 ) { Generate_Master_Item_List($gameversion); }
 
     if($type == 1)  { @options_human = split(/ /, $equiptables{$gameversion}{human}{heads});    @options_droid = split(/ /, $equiptables{$gameversion}{droid}{heads});    }
     if($type == 2)  { @options_human = split(/ /, $equiptables{$gameversion}{human}{implants}); @options_droid = split(/ /, $equiptables{$gameversion}{droid}{implants}); }
@@ -873,8 +660,8 @@ sub Populate_EquipTables{
     if(scalar @options_droid > 0)
     {
         my $dframe = $frame->DynaTabFrame(-height=>300, -width=>300, -tabpadx=>10)->place(-x=>0, -y=>0, -relwidth=>1, -relheight=>1);
-        if($type >= 8)
-        {#print "J";
+        if($type >= 8){
+            #print "J";
             my $d = $dframe->add("droid", -label=>"Ranged");
             my $h = $dframe->add("human", -label=>"Melee");
 
@@ -888,11 +675,11 @@ sub Populate_EquipTables{
                 $sitem = $j->get($j->curselection());
 
                 my $gffb1 = Bioware::GFF->new();
-                if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-                elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
+                if(-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti");    }
+                elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
                 else
                 {
-                    my $gffbif1 = Bioware::BIF->new($path{$g});
+                    my $gffbif1 = Bioware::BIF->new($kseInitializer->{path}->{$g});
                     my $resource1 = $gffbif1->get_resource('data\templates.bif', $sitem . ".uti");
                     $gffb1->read_gff_scalar($resource1);
                     $gffbif1 = undef; $resource1 = undef;
@@ -905,20 +692,20 @@ sub Populate_EquipTables{
 
                 my $name1 = $hah1{LocalizedName}{StringRef};
                 if($name1 == -1) { $name1 = $hah1{LocalizedName}{Substrings}[0]{Value}; }
-                else { $name1 = string_from_resref($path{$g}, $name1); }
+                else { $name1 = string_from_resref($kseInitializer->{path}->{$g}, $name1); }
 
                 my $desc1 = "none";
                 if($hah1{Identified} == 1)
                 {
                     my $desc11 = $hah1{DescIdentified}{StringRef};
                     if($desc11 == -1) { $desc1 = $hah1{DescIdentified}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
                 else
                 {
                     my $desc11 = $hah1{Description}{StringRef};
-                    if($desc11 == -1) { $desc1 = $hah{Description}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    if($desc11 == -1) { $desc1 = $hah1{Description}{Substrings}[0]{Value}; }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
 
                 $slabel->Contents("Current Item: $sitem\n\n\t\tItem Properties:\n\nName:\t$name1\n\nDescription:\n$desc1");
@@ -930,11 +717,11 @@ sub Populate_EquipTables{
                 $sitem = $k->get($k->curselection());
 
                 my $gffb1 = Bioware::GFF->new();
-                if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-                elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
+                if(-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti");    }
+                elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
                 else
                 {
-                    my $gffbif1 = Bioware::BIF->new($path{$g});
+                    my $gffbif1 = Bioware::BIF->new($kseInitializer->{path}->{$g});
                     my $resource1 = $gffbif1->get_resource('data\templates.bif', $sitem . ".uti");
                     $gffb1->read_gff_scalar($resource1);
                     $gffbif1 = undef; $resource1 = undef;
@@ -947,20 +734,20 @@ sub Populate_EquipTables{
 
                 my $name1 = $hah1{LocalizedName}{StringRef};
                 if($name1 == -1) { $name1 = $hah1{LocalizedName}{Substrings}[0]{Value}; }
-                else { $name1 = string_from_resref($path{$g}, $name1); }
+                else { $name1 = string_from_resref($kseInitializer->{path}->{$g}, $name1); }
 
                 my $desc1 = "none";
                 if($hah1{Identified} == 1)
                 {
                     my $desc11 = $hah1{DescIdentified}{StringRef};
                     if($desc11 == -1) { $desc1 = $hah1{DescIdentified}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
                 else
                 {
                     my $desc11 = $hah1{Description}{StringRef};
-                    if($desc11 == -1) { $desc1 = $hah{Description}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    if($desc11 == -1) { $desc1 = $hah1{Description}{Substrings}[0]{Value}; }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
 
                 $slabel->Contents("Current Item: $sitem\n\n\t\tItem Properties:\n\nName:\t$name1\n\nDescription:\n$desc1");
@@ -982,11 +769,11 @@ sub Populate_EquipTables{
                 $sitem = $j->get($j->curselection());
 
                 my $gffb1 = Bioware::GFF->new();
-                if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-                elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
+                if(-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti");    }
+                elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
                 else
                 {
-                    my $gffbif1 = Bioware::BIF->new($path{$g});
+                    my $gffbif1 = Bioware::BIF->new($kseInitializer->{path}->{$g});
                     my $resource1 = $gffbif1->get_resource('data\templates.bif', $sitem . ".uti");
                     $gffb1->read_gff_scalar($resource1);
                     $gffbif1 = undef; $resource1 = undef;
@@ -999,20 +786,20 @@ sub Populate_EquipTables{
 
                 my $name1 = $hah1{LocalizedName}{StringRef};
                 if($name1 == -1) { $name1 = $hah1{LocalizedName}{Substrings}[0]{Value}; }
-                else { $name1 = string_from_resref($path{$g}, $name1); }
+                else { $name1 = string_from_resref($kseInitializer->{path}->{$g}, $name1); }
 
                 my $desc1 = "none";
                 if($hah1{Identified} == 1)
                 {
                     my $desc11 = $hah1{DescIdentified}{StringRef};
                     if($desc11 == -1) { $desc1 = $hah1{DescIdentified}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
                 else
                 {
                     my $desc11 = $hah1{Description}{StringRef};
-                    if($desc11 == -1) { $desc1 = $hah{Description}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    if($desc11 == -1) { $desc1 = $hah1{Description}{Substrings}[0]{Value}; }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
 
                 $slabel->Contents("Current Item: $sitem\n\n\t\tItem Properties:\n\nName:\t$name1\n\nDescription:\n$desc1");
@@ -1024,11 +811,11 @@ sub Populate_EquipTables{
                 $sitem = $k->get($k->curselection());
 
                 my $gffb1 = Bioware::GFF->new();
-                if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-                elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
+                if(-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti");    }
+                elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
                 else
                 {
-                    my $gffbif1 = Bioware::BIF->new($path{$g});
+                    my $gffbif1 = Bioware::BIF->new($kseInitializer->{path}->{$g});
                     my $resource1 = $gffbif1->get_resource('data\templates.bif', $sitem . ".uti");
                     $gffb1->read_gff_scalar($resource1);
                     $gffbif1 = undef; $resource1 = undef;
@@ -1041,20 +828,20 @@ sub Populate_EquipTables{
 
                 my $name1 = $hah1{LocalizedName}{StringRef};
                 if($name1 == -1) { $name1 = $hah1{LocalizedName}{Substrings}[0]{Value}; }
-                else { $name1 = string_from_resref($path{$g}, $name1); }
+                else { $name1 = string_from_resref($kseInitializer->{path}->{$g}, $name1); }
 
                 my $desc1 = "none";
                 if($hah1{Identified} == 1)
                 {
                     my $desc11 = $hah1{DescIdentified}{StringRef};
                     if($desc11 == -1) { $desc1 = $hah1{DescIdentified}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
                 else
                 {
                     my $desc11 = $hah1{Description}{StringRef};
-                    if($desc11 == -1) { $desc1 = $hah{Description}{Substrings}[0]{Value}; }
-                    else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                    if($desc11 == -1) { $desc1 = $hah1{Description}{Substrings}[0]{Value}; }
+                    else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
                 }
 
                 $slabel->Contents("Current Item: $sitem\n\n\t\tItem Properties:\n\nName:\t$name1\n\nDescription:\n$desc1");
@@ -1072,11 +859,11 @@ sub Populate_EquipTables{
             $sitem = $j->get($j->curselection());
 
             my $gffb1 = Bioware::GFF->new();
-            if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-            elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
+            if(-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti");    }
+            elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb1->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
             else
             {
-                my $gffbif1 = Bioware::BIF->new($path{$g});
+                my $gffbif1 = Bioware::BIF->new($kseInitializer->{path}->{$g});
                 my $resource1 = $gffbif1->get_resource('data\templates.bif', $sitem . ".uti");
                 $gffb1->read_gff_scalar($resource1);
                 $gffbif1 = undef; $resource1 = undef;
@@ -1089,20 +876,20 @@ sub Populate_EquipTables{
 
             my $name1 = $hah1{LocalizedName}{StringRef};
             if($name1 == -1) { $name1 = $hah1{LocalizedName}{Substrings}[0]{Value}; }
-            else { $name1 = string_from_resref($path{$g}, $name1); }
+            else { $name1 = string_from_resref($kseInitializer->{path}->{$g}, $name1); }
 
             my $desc1 = "none";
             if($hah1{Identified} == 1)
             {
                 my $desc11 = $hah1{DescIdentified}{StringRef};
                 if($desc11 == -1) { $desc1 = $hah1{DescIdentified}{Substrings}[0]{Value}; }
-                else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
             }
             else
             {
                 my $desc11 = $hah1{Description}{StringRef};
-                if($desc11 == -1) { $desc1 = $hah{Description}{Substrings}[0]{Value}; }
-                else { $desc1 = Bioware::TLK::string_from_resref($path{$g}, $desc11); }
+                if($desc11 == -1) { $desc1 = $hah1{Description}{Substrings}[0]{Value}; }
+                else { $desc1 = Bioware::TLK::string_from_resref($kseInitializer->{path}->{$g}, $desc11); }
             }
 
             $slabel->Contents("Current Item: $sitem\n\n\t\tItem Properties:\n\nName:\t$name1\n\nDescription:\n$desc1");
@@ -1144,11 +931,10 @@ sub Populate_EquipTables{
             if($array->[$in]{ID} == $id)
             {#print "Found a match: $in ID: $id\n";
                 my $gffb = Bioware::GFF->new();
-                if(-e $path{$g} . "\\override\\$sitem.uti") { $gffb->read_gff_file($path{$g} . "\\override\\$item.uti");    }
-                elsif(-e $path{$g} . "\\Override\\$sitem.uti") { $gffb->read_gff_file($path{$g} . "\\Override\\$item.uti"); }
-                else
-                {
-                    my $gffbif = Bioware::BIF->new($path{$g});
+                if   (-e $kseInitializer->{path}->{$g} . "\\override\\$sitem.uti") { $gffb->read_gff_file($kseInitializer->{path}->{$g} . "\\override\\$sitem.uti"); }
+                elsif(-e $kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti") { $gffb->read_gff_file($kseInitializer->{path}->{$g} . "\\Override\\$sitem.uti"); }
+                else {
+                    my $gffbif = Bioware::BIF->new($kseInitializer->{path}->{$g});
                     my $resource = $gffbif->get_resource('data\templates.bif', $sitem . ".uti");
                     $gffb->read_gff_scalar($resource);
                     $gffbif = undef; $resource = undef;
@@ -1242,8 +1028,8 @@ sub Populate_Level1 {
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -1266,7 +1052,7 @@ sub Populate_Level1 {
     my %soundset_hash;
     my %standard_npcs;
     if ($gameversion==1) {
-        $registered_path=$path{kotor_save};
+        $registered_path=$kseInitializer->{path}->{kotor_save};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
         %portraits_hash=%portraits_hash1;
@@ -1274,23 +1060,23 @@ sub Populate_Level1 {
         %standard_npcs=%standard_kotor_npcs;
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl_save};
+        $registered_path=$kseInitializer->{path}->{tsl_save};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
         %soundset_hash=%soundset_hash2;
         %standard_npcs=%standard_tsl_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm} . "/saves";
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
         %soundset_hash=%soundset_hash3;
         %standard_npcs=%tjm_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl_cloud};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl_cloud};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
@@ -1298,7 +1084,7 @@ sub Populate_Level1 {
         %standard_npcs=%standard_tsl_npcs;
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm} . "/saves";
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
@@ -1586,8 +1372,8 @@ sub Populate_Classes {
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
 
     my $ent = $parms[2];
     my $su = $_;
@@ -1614,11 +1400,11 @@ sub Populate_Classes {
         %classes=%classes_hash2;
         %powers_full=%powers_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %classes=%classes_hash3;
         %powers_full=%powers_full3;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %classes=%classes_hash2;
         %powers_full=%powers_full2;
     }
@@ -1677,8 +1463,8 @@ sub Populate_Skills{
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -1697,10 +1483,10 @@ sub Populate_Skills{
     elsif ($gameversion==2) {
         %skills=%skills_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %skills=%skills_hash3;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %skills=%skills_hash2;
     }
     elsif ($gameversion==4) {
@@ -1738,8 +1524,8 @@ sub Populate_Feats {
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -1759,14 +1545,17 @@ sub Populate_Feats {
     elsif ($gameversion==2) {
         %feats_full=%feats_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %feats_full=%feats_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %feats_full=%feats_full3;
     }
     elsif ($gameversion==4) {
         %feats_full=%feats_full3;
+    }
+    else{
+        LogFatal("NOT OK?");
     }
 
     #	while( my ($key, $value) = each (%feats_full))
@@ -1780,10 +1569,9 @@ sub Populate_Feats {
     my $gff=${$tree->entrycget( '#'.$gameversion.'#'.(split /#/,$treeitem)[2],-data)}{'GFF-ifo'};
     my $mod_playerlist=$gff->{Main}{Fields}[$gff->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
     my @feat_list=@{$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FeatList')]{'Value'}};
-    #	print join "\n", @feat_list;
+    	print join "\n", @feat_list;
     my $i=0;
     for my $feat_struct (@feat_list) {
-        #print "The feat is: $feats_full{name}{$feat_struct->{Fields}{Value}}\n";
         $tree->add($treeitem."#Feat".$feats_full{label}{$feat_struct->{'Fields'}{'Value'}},-text=>"$feats_full{name}{$feat_struct->{Fields}{Value}}",-data=>'can modify');
         $tree->hide('entry',$treeitem."#Feat".$feats_full{label}{$feat_struct->{'Fields'}{'Value'}});
         $i++;
@@ -1797,28 +1585,29 @@ sub Current_Party{
     my $registered_path;
     my %standard_npcs;
     for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-        $widge->destroy if Tk::Exists($widge);    }
+        $widge->destroy if Tk::Exists($widge);
+    }
     @spawned_widgets=();
     eval {$picture_label_photo->delete};
 
-    if ($gameversion==1) {
-        $registered_path=$path{kotor_save};
+    if    ($gameversion==1) {
+        $registered_path=$kseInitializer->{path}->{kotor_save};
         %standard_npcs=%standard_kotor_npcs;
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl_save};
+        $registered_path=$kseInitializer->{path}->{tsl_save};
         %standard_npcs=%standard_tsl_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl_save};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl_save};
         %standard_npcs=%standard_tsl_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm} . "/saves";
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %standard_npcs=%standard_tjm_npcs;
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm} . "/saves";
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %standard_npcs=%tjm_npcs;
     }
     my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
@@ -1900,19 +1689,19 @@ sub Populate_NPCs{
     my $gameversion=(split /#/,$treeitem)[1];
     my $registered_path;
     if ($gameversion==1) {
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tsl};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tjm};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     my $erf_sav=${$tree->entrycget( '#'.$gameversion.'#'.(split /#/,$treeitem)[2],-data)}{'ERF-sav'};
     my $avail_npcs_ref=$tree->entrycget($treeitem,-data);
@@ -1956,7 +1745,7 @@ sub Populate_NPC{
     $treeitem=~/NPC(\d+)$/;
     my $npc_number=$1;
     if ($gameversion==1) {
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
         %portraits_hash=%portraits_hash1;
@@ -1967,7 +1756,7 @@ sub Populate_NPC{
         %classes=%classes_hash1;
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
@@ -1977,8 +1766,8 @@ sub Populate_NPC{
         %powers_full=%powers_full2;
         %classes=%classes_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
@@ -1988,8 +1777,8 @@ sub Populate_NPC{
         %powers_full=%powers_full2;
         %classes=%classes_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm};
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
@@ -2000,7 +1789,7 @@ sub Populate_NPC{
         %classes=%classes_hash3;
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
@@ -2495,8 +2284,8 @@ sub CommitChanges {
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -2510,19 +2299,19 @@ sub CommitChanges {
     my $gameversion=(split /#/,$treeitem)[1];
     my $registered_path;
     if ($gameversion==1) {
-        $registered_path=$path{kotor_save};
+        $registered_path=$kseInitializer->{path}->{kotor_save};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl_save};
+        $registered_path=$kseInitializer->{path}->{tsl_save};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl_cloud};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl_cloud};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm} . "/saves";
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm} . "/saves";
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
     }
 
     my $gamedir=(split /#/,$treeitem)[2];
@@ -2795,10 +2584,10 @@ sub SpawnFeatWidgets {
     elsif ($gameversion==2) {
         %feats_full=%feats_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %feats_full=%feats_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %feats_full=%feats_full3;
     }
     elsif ($gameversion==4) {
@@ -2872,27 +2661,27 @@ sub SpawnAddFeatWidgets {
     if ($gameversion==1) {
         %feats_full=%feats_full1;
         %feats_short=%feats_short1;
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
         %feats_full=%feats_full2;
         %feats_short=%feats_short2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %feats_full=%feats_full2;
         %feats_short=%feats_short2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %feats_full=%feats_full3;
         %feats_short=%feats_short3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
         %feats_full=%feats_full3;
         %feats_short=%feats_short3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
 
     %feats=$short_or_long ? %feats_full : %feats_short;
@@ -3170,10 +2959,10 @@ sub SpawnPowerWidgets {
     elsif ($gameversion==2) {
         %powers_full=%powers_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %powers_full=%powers_full2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %powers_full=%powers_full3;
     }
     elsif ($gameversion==4) {
@@ -3259,27 +3048,27 @@ sub SpawnAddPowerWidgets {
     if ($gameversion==1) {
         %powers_full=%powers_full1;
         %powers_short=%powers_short1;
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
         %powers_full=%powers_full2;
         %powers_short=%powers_short2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %powers_full=%powers_full2;
         %powers_short=%powers_short2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %powers_full=%powers_full3;
         %powers_short=%powers_short3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
         %powers_full=%powers_full3;
         %powers_short=%powers_short3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     %powers=$short_or_long ?  %powers_full :  %powers_short;
     my %revhash_name= reverse %{$powers{name}};
@@ -4012,10 +3801,10 @@ sub SpawnGenderWidgets {
     elsif ($gameversion==2) {
         %genders=%gender_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %genders=%gender_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %genders=%gender_hash3;
     }
     elsif ($gameversion==4) {
@@ -4082,11 +3871,11 @@ sub SpawnChangeClassWidgets {
         %classes=%classes_hash2;
         %spellcasters=%spellcasters2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %classes=%classes_hash2;
         %spellcasters=%spellcasters2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %classes=%classes_hash3;
         %spellcasters=%spellcasters3;
     }
@@ -4330,10 +4119,10 @@ sub SpawnAppearanceWidgets {
     elsif ($gameversion==2) {
         %appearance_hash=%appearance_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %appearance_hash=%appearance_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %appearance_hash=%appearance_hash3;
     }
     elsif ($gameversion==4) {
@@ -4415,23 +4204,23 @@ sub SpawnPortraitWidgets {
 
     if ($gameversion==1) {
         %portraits_hash=%portraits_hash1;
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
         %portraits_hash=%portraits_hash2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %portraits_hash=%portraits_hash2;
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %portraits_hash=%portraits_hash3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
         %portraits_hash=%portraits_hash3;
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
 
     my $cur_portrait=$tree->entrycget($treeitem,-text);
@@ -4549,10 +4338,10 @@ sub SpawnSoundsetWidgets {
     elsif ($gameversion==2) {
         %soundset_hash=%soundset_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         %soundset_hash=%soundset_hash2;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         %soundset_hash=%soundset_hash3;
     }
     elsif ($gameversion==4) {
@@ -4744,8 +4533,8 @@ sub Populate_Inventory {
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -4760,19 +4549,19 @@ sub Populate_Inventory {
     my $registered_path;
 
     if ($gameversion==1) {
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
 
     LogInfo("Populating $gv->$gm");
@@ -4839,7 +4628,7 @@ sub SpawnInventoryWidgets {
         my $curtext=$tree->entrycget($treeitem,-text);
         if ($cur_vasl>0) {
             $curtext=~/(.*)\[(\d+)/;
-            LogInfo ("Changing count of $1 from $2 to $cur_val");
+            LogInfo ("Changing count of $1 from $2 to $cur_vasl");
             my $newtext="$1\[$cur_vasl\]";
             my $this_tag=(split / /,$curtext)[0];
             $tree->entryconfigure($treeitem,-text=>$newtext);
@@ -4876,7 +4665,7 @@ sub SpawnInventoryWidgets {
     $btn_sub=$mw->Button(-text=>"-",-font=>['MS Sans Serif','10'],-command=>sub{
         $cur_vasl -= 0;
         #print "Before: $cur_vasl \n";
-        my $cur_valq=$cur_vasl;
+        my $cur_valg=$cur_vasl;
         if ($cur_valg >= 0) {
             $cur_valg -= 1;
             $cur_vasl = $cur_valg;
@@ -4888,7 +4677,7 @@ sub SpawnInventoryWidgets {
 
     $btn_sub5=$mw->Button(-text=>"-5",-font=>['MS Sans Serif','10'],-command=>sub{
         $cur_vasl -= 0;
-        my $cur_valq=$cur_vasl;
+        my $cur_valg=$cur_vasl;
         if ($cur_valg > 5) {
             $cur_valg -= 5;
             $cur_vasl = $cur_valg;
@@ -4899,7 +4688,7 @@ sub SpawnInventoryWidgets {
 
     $btn_sub10=$mw->Button(-text=>"-10",-font=>['MS Sans Serif','10'],-command=>sub{
         $cur_vasl -= 0;
-        my $cur_valq=$cur_vasl;
+        my $cur_valg=$cur_vasl;
         if ($cur_valg > 10) {
             $cur_valg -= 10;
             $cur_vasl = $cur_valg;
@@ -4909,9 +4698,9 @@ sub SpawnInventoryWidgets {
     push @spawned_widgets,$btn_sub10;
 
     $btn_add=$mw->Button(-text=>"+",-font=>['MS Sans Serif','10'],-command=>sub{
-        $cur_vasl - 0;
+        $cur_vasl -= 0;
         #print "Before: $cur_vasl \n";
-        my $cur_valq=$cur_vasl;
+        my $cur_valg=$cur_vasl;
         $cur_valg = $cur_vasl + 1;
         $cur_vasl = $cur_valg;
         #print "After: $cur_vasl \n";
@@ -4920,8 +4709,8 @@ sub SpawnInventoryWidgets {
     push @spawned_widgets,$btn_add;
 
     $btn_add5=$mw->Button(-text=>"+5",-font=>['MS Sans Serif','10'],-command=>sub{
-        $cur_vasl - 0;
-        my $cur_valq=$cur_vasl;
+        $cur_vasl -= 0;
+        my $cur_valg=$cur_vasl;
 
         $cur_valg = $cur_vasl + 5;
         $cur_vasl = $cur_valg;
@@ -4931,8 +4720,8 @@ sub SpawnInventoryWidgets {
     push @spawned_widgets,$btn_add5;
 
     $btn_add10=$mw->Button(-text=>"+10",-font=>['MS Sans Serif','10'],-command=>sub{
-        $cur_vasl - 0;
-        my $cur_valq=$cur_vasl;
+        $cur_vasl -= 0;
+        my $cur_valg=$cur_vasl;
 
         $cur_valg = $cur_vasl + 10;
         $cur_vasl = $cur_valg;
@@ -4948,7 +4737,7 @@ sub SpawnInventoryWidgets {
         my $curtext=$tree->entrycget($treeitem,-text);
         if ($cur_vasl>0) {
             $curtext=~/(.*)\[(\d+)/;
-            LogInfo ("Changing count of $1 from $2 to $cur_val");
+            LogInfo ("Changing count of $1 from $2 to $cur_vasl");
             my $newtext="$1\[$cur_vasl\]";
             my $this_tag=(split / /,$curtext)[0];
             $tree->entryconfigure($treeitem,-text=>$newtext);
@@ -5149,11 +4938,11 @@ sub SpawnAddInventoryWidgets {
 
     }
 
-    if ($gameversion==1) { %master_item_list=%master_item_list1; $registered_path=$path{kotor}; $baseitems_hash_ref=\%baseitems_hash1;}
-    elsif ($gameversion==2) { %master_item_list=%master_item_list2; $registered_path=$path{tsl};   $baseitems_hash_ref=\%baseitems_hash2;}
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) { %master_item_list=%master_item_list2; $registered_path=$path{tsl};   $baseitems_hash_ref=\%baseitems_hash2;}
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) { %master_item_list=%master_item_list3; $registered_path=$path{tjm};   $baseitems_hash_ref=\%baseitems_hash3;}
-    elsif ($gameversion==4) { %master_item_list=%master_item_list3; $registered_path=$path{tjm};   $baseitems_hash_ref=\%baseitems_hash3;}
+    if ($gameversion==1) { %master_item_list=%master_item_list1; $registered_path=$kseInitializer->{path}->{kotor}; $baseitems_hash_ref=\%baseitems_hash1;}
+    elsif ($gameversion==2) { %master_item_list=%master_item_list2; $registered_path=$kseInitializer->{path}->{tsl};   $baseitems_hash_ref=\%baseitems_hash2;}
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) { %master_item_list=%master_item_list2; $registered_path=$kseInitializer->{path}->{tsl};   $baseitems_hash_ref=\%baseitems_hash2;}
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) { %master_item_list=%master_item_list3; $registered_path=$kseInitializer->{path}->{tjm};   $baseitems_hash_ref=\%baseitems_hash3;}
+    elsif ($gameversion==4) { %master_item_list=%master_item_list3; $registered_path=$kseInitializer->{path}->{tjm};   $baseitems_hash_ref=\%baseitems_hash3;}
 
     my $lbl=$mw->Label(-text=>"Available Items:",-font=>['MS Sans Serif','8'])->place(-relx=>600/$x,-rely=>120/$y,-anchor=>'sw');
     push @spawned_widgets,$lbl;
@@ -5165,8 +4954,8 @@ sub SpawnAddInventoryWidgets {
         $lbl->configure(-text=>"Available Items:");
         if ($gameversion==1) { %master_item_list=%master_item_list1}
         elsif ($gameversion==2) {%master_item_list=%master_item_list2}
-        elsif ($gameversion==3 && $use_tsl_cloud == 1) {%master_item_list=%master_item_list2}
-        elsif ($gameversion==3 && $use_tsl_cloud == 0) {%master_item_list=%master_item_list3}
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {%master_item_list=%master_item_list2}
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {%master_item_list=%master_item_list3}
         elsif ($gameversion==4) {%master_item_list=%master_item_list3}
     }
 
@@ -5607,11 +5396,11 @@ sub Generate_Master_Item_List {
     my $registered_path;
     #	print $gameversion;
     my $real_game = $gameversion;
-    if ($gameversion==1)    { $registered_path=$path{kotor} }
-    elsif ($gameversion==2) { $registered_path=$path{tsl}   }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) { $real_game = 2; $registered_path=$path{tsl} }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) { $real_game = 3; $registered_path=$path{tjm} }
-    elsif ($gameversion==4) { $real_game = 3; $registered_path=$path{tjm}   }
+    if ($gameversion==1)    { $registered_path=$kseInitializer->{path}->{kotor} }
+    elsif ($gameversion==2) { $registered_path=$kseInitializer->{path}->{tsl}   }
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) { $real_game = 2; $registered_path=$kseInitializer->{path}->{tsl} }
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) { $real_game = 3; $registered_path=$kseInitializer->{path}->{tjm} }
+    elsif ($gameversion==4) { $real_game = 3; $registered_path=$kseInitializer->{path}->{tjm}   }
 
     if($items{$real_game}==0)
     {
@@ -5641,12 +5430,12 @@ sub Generate_Master_Item_List {
                 $baseitems_hash2{$k}='i'.$hashref->{$k}{itemclass}.'_';
             }
         }
-        elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
             for my $k (keys %$hashref) {
                 $baseitems_hash2{$k}='i'.$hashref->{$k}{itemclass}.'_';
             }
         }
-        elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
             for my $k (keys %$hashref) {
                 $baseitems_hash3{$k}='i'.$hashref->{$k}{itemclass}.'_';
             }
@@ -5668,6 +5457,7 @@ sub Generate_Master_Item_List {
         my $tmp_gff=Bioware::GFF->new();
         for my $template (@templates) {
             my $resource_ref=$bif->get_resource('data\\templates.bif',$template);
+
             $template =~ s/\.uti//;
             $tmp_gff->read_gff_scalar($resource_ref);
             $master_item_list{$template}{'tag'}=lc $tmp_gff->{Main}{Fields}[$tmp_gff->{Main}->get_field_ix_by_label('Tag')]{Value};
@@ -5724,7 +5514,7 @@ sub Generate_Master_Item_List {
                 }
                 else
                 {
-                    $weaponsrange .= " $template";
+                    $weaponsranged .= " $template";
                 }
             }
             elsif($hashref->{$master_item_list{$template}{baseitem}}{equipableslots} eq "0x00030")
@@ -5735,7 +5525,7 @@ sub Generate_Master_Item_List {
                 }
                 else
                 {
-                    $weaponsrange .= " $template";
+                    $weaponsranged .= " $template";
                 }
             }
             elsif($hashref->{$master_item_list{$template}{baseitem}}{equipableslots} eq "0x00180")
@@ -5839,7 +5629,7 @@ sub Generate_Master_Item_List {
                 }
                 else
                 {
-                    $weaponsrange .= " $template";
+                    $weaponsranged .= " $template";
                 }
             }
             elsif($hashref->{$master_item_list{$template}{baseitem}}{equipableslots} eq "0x00030")
@@ -5850,7 +5640,7 @@ sub Generate_Master_Item_List {
                 }
                 else
                 {
-                    $weaponsrange .= " $template";
+                    $weaponsranged .= " $template";
                 }
             }
             elsif($hashref->{$master_item_list{$template}{baseitem}}{equipableslots} eq "0x00180")
@@ -5895,10 +5685,10 @@ sub Generate_Master_Item_List {
         elsif ($gameversion==2) {
             %master_item_list2=%master_item_list;
         }
-        elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
             %master_item_list2=%master_item_list;
         }
-        elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+        elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
             %master_item_list3=%master_item_list;
         }
         elsif ($gameversion==4) {
@@ -5920,7 +5710,7 @@ sub Generate_Master_Item_List {
         $equiptables{$gameversion}{droid}{belts}    = $droidbelts;
 
         $equiptables{$gameversion}{weapons}{melee} = $weaponsmelee;
-        $equiptables{$gameversion}{weapons}{range} = $weaponsrange;
+        $equiptables{$gameversion}{weapons}{range} = $weaponsranged;
 
     }
     $mw->Unbusy;
@@ -5969,11 +5759,11 @@ sub RWhat {
         change_registered_path(2);
         $game = "TSL";
     }
-    elsif ($treeitem eq '#3' && $use_tsl_cloud == 1) {
+    elsif ($treeitem eq '#3' && $kseInitializer->{use_tsl_cloud} == 1) {
         change_registered_path(2);
         $game = "TSL";
     }
-    elsif ($treeitem eq '#3' && $use_tsl_cloud == 0) {
+    elsif ($treeitem eq '#3' && $kseInitializer->{use_tsl_cloud} == 0) {
         change_registered_path(3);
         $game = "TJM";
     }
@@ -6044,19 +5834,19 @@ sub GetRegisteredPath {
     my $registered_path;
 
     if ($gameversion==1) {
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
 
     return $registered_path
@@ -6067,19 +5857,19 @@ sub GetRegisteredSavePath {
     my $registered_path;
 
     if ($gameversion==1) {
-        $registered_path=$path{kotor_save};
+        $registered_path=$kseInitializer->{path}->{kotor_save};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl_save};
+        $registered_path=$kseInitializer->{path}->{tsl_save};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl_cloud};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl_cloud};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm}."\\saves";
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm}."\\saves";
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm}."\\saves";
+        $registered_path=$kseInitializer->{path}->{tjm}."\\saves";
     }
 
     return $registered_path
@@ -6092,8 +5882,15 @@ sub LoadData {
     my $gameversion=(split /#/,$treeitem)[1];# print "\$gameversion is: $gameversion\n";
     my $gamedir=(split /#/,$treeitem)[2]; #print "\$gamedir is: $gamedir\n";
     my $registered_path;
+
+    my %genders;
+    my %appearance_hash;
+    my %portraits_hash;
+    my %soundset_hash;
+    my %standard_npcs;
+
     if ($gameversion==1) {
-        $registered_path=$path{kotor_save};
+        $registered_path=$kseInitializer->{path}->{kotor_save};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
         %portraits_hash=%portraits_hash1;
@@ -6101,23 +5898,23 @@ sub LoadData {
         %standard_npcs=%standard_kotor_npcs;
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl_save};
+        $registered_path=$kseInitializer->{path}->{tsl_save};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
         %soundset_hash=%soundset_hash2;
         %standard_npcs=%standard_tsl_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm} . "/saves";
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
         %soundset_hash=%soundset_hash3;
         %standard_npcs=%tjm_npcs;
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl_cloud};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl_cloud};
         %genders=%gender_hash2;
         %appearance_hash=%appearance_hash2;
         %portraits_hash=%portraits_hash2;
@@ -6125,7 +5922,7 @@ sub LoadData {
         %standard_npcs=%standard_tsl_npcs;
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm} . "/saves";
+        $registered_path=$kseInitializer->{path}->{tjm} . "/saves";
         %genders=%gender_hash3;
         %appearance_hash=%appearance_hash3;
         %portraits_hash=%portraits_hash3;
@@ -6343,28 +6140,28 @@ sub change_registered_path {
           my $browsed_path=BrowseForFolder('Locate '.$gamename.' installation directory');
           if ($browsed_path) {
               if ($which_game==1) {
-                  $oldpath{kotor}=$path{kotor};
-                  $path{kotor}=$browsed_path;
+                  $oldpath{kotor}=$kseInitializer->{path}->{kotor};
+                  $kseInitializer->{path}->{kotor}=$browsed_path;
 
                   %master_item_list1 = ();
                   $items{1} = 0;
                   $open{1} = 0;
 
-                  $k1_installed=1;
-                  $k1_bif = Bioware::BIF->new($path{kotor});
+                  $kseInitializer->{k1_installed}=1;
+                  my $k1_bif = Bioware::BIF->new($kseInitializer->{path}->{kotor});
               }
               elsif ($which_game==2) {
-                  $oldpath{tsl}=$path{tsl};
-                  $oldpath{tsl_save}=$path{tsl_save};
-                  $oldpath{tsl_cloud}=$path{tsl_cloud};
-                  $path{tsl}=$browsed_path;
+                  $oldpath{tsl}=$kseInitializer->{path}->{tsl};
+                  $oldpath{tsl_save}=$kseInitializer->{path}->{tsl_save};
+                  $oldpath{tsl_cloud}=$kseInitializer->{path}->{tsl_cloud};
+                  $kseInitializer->{path}->{tsl}=$browsed_path;
 
                   # Check if cloudsaves dir can be located
-                  if(-e $path{tsl}."/cloudsaves")
+                  if(-e $kseInitializer->{path}->{tsl}."/cloudsaves")
                   {
-                      $use_tsl_cloud = 1;
-                      opendir(CLOUDSAVEDIR, $path{'tsl'} . "/cloudsaves");
-                      $path{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$path{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
+                      $kseInitializer->{use_tsl_cloud} = 1;
+                      opendir(CLOUDSAVEDIR, $kseInitializer->{path}->{'tsl'} . "/cloudsaves");
+                      $kseInitializer->{path}->{'tsl_cloud'} = (grep { !(/\.+$/) && -d } map {"$kseInitializer->{path}->{tsl}/cloudsaves/$_"} readdir(CLOUDSAVEDIR))[0];
                       closedir(CLOUDSAVEDIR); # Release handle
                   }
 
@@ -6372,30 +6169,30 @@ sub change_registered_path {
                   $items{2} = 0;
                   $open{2} = 0;
 
-                  $k2_installed=1;
-                  $k2_bif = Bioware::BIF->new($path{tsl});
+                  $kseInitializer->{k2_installed}=1;
+                  my $k2_bif = Bioware::BIF->new($kseInitializer->{path}->{tsl});
               }
-              elsif ($which_game==3 && $use_tsl_cloud == 0) {
-                  $oldpath{tjm}=$path{tjm};
-                  $path{tjm}=$browsed_path;
+              elsif ($which_game==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+                  $oldpath{tjm}=$kseInitializer->{path}->{tjm};
+                  $kseInitializer->{path}->{tjm}=$browsed_path;
 
                   %master_item_list3 = ();
                   $items{3} = 0;
                   $open{3} = 0;
 
-                  $tjm_installed=1;
-                  $k3_bif = Bioware::BIF->new($path{tjm});
+                  $kseInitializer->{tjm_installed}=1;
+                  my $k3_bif = Bioware::BIF->new($kseInitializer->{path}->{tjm});
               }
               elsif ($which_game==4) {
-                  $oldpath{tjm}=$path{tjm};
-                  $path{tjm}=$browsed_path;
+                  $oldpath{tjm}=$kseInitializer->{path}->{tjm};
+                  $kseInitializer->{path}->{tjm}=$browsed_path;
 
                   %master_item_list3 = ();
                   $items{3} = 0;
                   $open{3} = 0;
 
-                  $tjm_installed=1;
-                  $k3_bif = Bioware::BIF->new($path{tjm});
+                  $kseInitializer->{tjm_installed}=1;
+                  my $k3_bif = Bioware::BIF->new($kseInitializer->{path}->{tjm});
               }
               $tree->delete('offspring', "#" . $which_game);
               Load($which_game);
@@ -6422,28 +6219,28 @@ sub change_registered_path {
       -popanchor => 'nw');
 }
 sub read_global_jrls {
-    if ($k1_installed) {
+    if ($kseInitializer->{k1_installed}) {
         $journal1=Bioware::GFF->new();
-        if (-e $path{kotor}."/override/global.jrl") {
+        if (-e $kseInitializer->{path}->{kotor}."/override/global.jrl") {
             LogInfo("KotOR global.jrl override detected");
-            $journal1->read_gff_file($path{kotor}."/override/global.jrl");
+            $journal1->read_gff_file($kseInitializer->{path}->{kotor}."/override/global.jrl");
         }
         else {
-            my $k1_bif=Bioware::BIF->new($path{kotor},24,'jrl');
+            my $k1_bif=Bioware::BIF->new($kseInitializer->{path}->{kotor},24,'jrl');
             if ($k1_bif ==undef) {$k1_bif=try_extracted_data(1,24,'jrl')}
             my $tempjrlfile=$k1_bif->get_resource('data\\_newbif.bif','global.jrl');
             $journal1->read_gff_scalar($tempjrlfile);
 
         }
     }
-    if ($k2_installed) {
+    if ($kseInitializer->{k2_installed}) {
         $journal2=Bioware::GFF->new();
-        if (-e $path{tsl}."/override/global.jrl") {
+        if (-e $kseInitializer->{path}->{tsl}."/override/global.jrl") {
             LogInfo("TSL global.jrl override detected");
-            $journal2->read_gff_file($path{tsl}."/override/global.jrl");
+            $journal2->read_gff_file($kseInitializer->{path}->{tsl}."/override/global.jrl");
         }
         else {
-            my $k2_bif=Bioware::BIF->new($path{tsl},1,'jrl');
+            my $k2_bif=Bioware::BIF->new($kseInitializer->{path}->{tsl},1,'jrl');
             if ($k2_bif==undef){
                 $journal2->read_gff_file(try_extracted_data(undef,'Get Journal',undef));
             }
@@ -6455,14 +6252,14 @@ sub read_global_jrls {
 
         }
     }
-    if ($tjm_installed) {
+    if ($kseInitializer->{tjm_installed}) {
         $journal3=Bioware::GFF->new();
-        if (-e $path{tjm}."/override/global.jrl") {
+        if (-e $kseInitializer->{path}->{tjm}."/override/global.jrl") {
             LogInfo("TJM global.jrl override detected");
-            $journal3->read_gff_file($path{tjm}."/override/global.jrl");
+            $journal3->read_gff_file($kseInitializer->{path}->{tjm}."/override/global.jrl");
         }
         else {
-            my $tjm_bif=Bioware::BIF->new($path{tjm},1,'jrl');
+            my $tjm_bif=Bioware::BIF->new($kseInitializer->{path}->{tjm},1,'jrl');
             if ($tjm_bif==undef){
                 $journal3->read_gff_file(try_extracted_data(undef,'Get Journal',undef));
             }
@@ -6488,8 +6285,8 @@ sub Populate_Journal {
 
     if ($parms[1] == 1) { $gv = "Kotor 1"; }
     if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 2/TSL Cloud"; }
-    if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 3/TJM"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
+    if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 3/TJM"; }
     if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
     my $ent = $parms[2];
@@ -6506,19 +6303,19 @@ sub Populate_Journal {
     #    $tree->add("$treeitem#Journal",-text=>'Journal Entries');
     my $registered_path;
     if ($gameversion==1) {
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
-        $registered_path=$path{tsl};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
-        $registered_path=$path{tjm};
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     my $root='#'.$gameversion.'#'.$gamedir;
     my $datahash;
@@ -6534,10 +6331,10 @@ sub Populate_Journal {
     elsif ($gameversion==2) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         $jrl_categories_arr_ref=$journal3->{Main}{Fields}{Value};
     }
     elsif ($gameversion==4) {
@@ -6609,23 +6406,23 @@ sub SpawnJRLWidgets() {
 
     if ($gameversion==1) {
         $jrl_categories_arr_ref=$journal1->{Main}{Fields}{Value};
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         $jrl_categories_arr_ref=$journal3->{Main}{Fields}{Value};
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
         $jrl_categories_arr_ref=$journal3->{Main}{Fields}{Value};
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     my $be_selection;
     LogInfo ("Jrltag: $jrltag  JrlName: $jrlname  JrlState: $jrl_state JrlText: $jrl_text");
@@ -6761,23 +6558,23 @@ sub SpawnAddJRLWidgets {
 
     if ($gameversion==1) {
         $jrl_categories_arr_ref=$journal1->{Main}{Fields}{Value};
-        $registered_path=$path{kotor};
+        $registered_path=$kseInitializer->{path}->{kotor};
     }
     elsif ($gameversion==2) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 1) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
         $jrl_categories_arr_ref=$journal2->{Main}{Fields}{Value};
-        $registered_path=$path{tsl};
+        $registered_path=$kseInitializer->{path}->{tsl};
     }
-    elsif ($gameversion==3 && $use_tsl_cloud == 0) {
+    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
         $jrl_categories_arr_ref=$journal3->{Main}{Fields}{Value};
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
     elsif ($gameversion==4) {
         $jrl_categories_arr_ref=$journal3->{Main}{Fields}{Value};
-        $registered_path=$path{tjm};
+        $registered_path=$kseInitializer->{path}->{tjm};
     }
 
 
@@ -7045,15 +6842,15 @@ sub try_extracted_data {
 sub Load {
     my $branch_to_populate=shift;
     #Read KotOR1 saves
-    if ($k1_installed && (($branch_to_populate == undef)||($branch_to_populate==1))) {
+    if ($kseInitializer->{k1_installed} && (!(defined $branch_to_populate) || ($branch_to_populate==1))) {
         LogInfo "Reading KotOR saves...";
-        unless (opendir SAVDIR, $path{kotor_save}) {                                        #saves directory not found
+        unless (opendir SAVDIR, $kseInitializer->{path}->{kotor_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find saves directory for KotOR1',-type=>'Ok');
             LogInfo ('KSE could not find saves directory for KotOR1.');
-            $k1_installed=0;
+            $kseInitializer->{k1_installed}=0;
         }
-        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{kotor_save}\\$_"} readdir(SAVDIR);    #read all directories in saves dir
+        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{kotor_save}\\$_"} readdir(SAVDIR);    #read all directories in saves dir
         close SAVDIR;
         if ($branch_to_populate==1) {
             $tree->delete('offsprings','#1');                                                         #if this is a re-populate, then delete any leaves from this branch
@@ -7066,41 +6863,47 @@ sub Load {
             $tree->hide('entry','#1#'.$dir.'#');                                                       #give them something to talk about
         }
     }
-    if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==2))) {
+    if ($kseInitializer->{k2_installed} && (!(defined $branch_to_populate)||($branch_to_populate==2))) {
         LogInfo "Reading KotOR II - TSL saves...";
-        unless (opendir SAVDIR2, $path{tsl_save}) {                                        #saves directory not found
+        unless (opendir SAVDIR2, $kseInitializer->{path}->{tsl_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find saves directory for KotOR2',-type=>'Ok');
             LogInfo ('KSE could not find saves directory for KotOR2.');
-            $k2_installed=0;
+            $kseInitializer->{k2_installed}=0;
         }
 
-        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{tsl_save}\\$_"} readdir(SAVDIR2);    #read all directories in saves dir
+        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{tsl_save}\\$_"} readdir(SAVDIR2);    #read all directories in saves dir
         close SAVDIR2;
         if ($branch_to_populate==2) {
-            $tree->delete('offsprings','#2');                                                        #if this is a re-populate, then delete any leaves from this branch
+            #if this is a re-populate, then delete any leaves from this branch
+            $tree->delete('offsprings','#2');
         }
         for (sort @savedirs) {
             /\\.*\\(.+?)$/;
             my $dir=$1;
             $tree->add('#2#'.$dir,-text=>$dir);
             $tree->add('#2#'.$dir.'#',-text=>'.');
-            $tree->hide('entry','#2#'.$dir.'#');                                                       #give them something to talk about
+            #give them something to talk about
+            $tree->hide('entry','#2#'.$dir.'#');
         }
     }
-    if ($k2_installed && (($branch_to_populate == undef)||($branch_to_populate==3))) {
+    if ($kseInitializer->{k2_installed} && (!(defined $branch_to_populate)||($branch_to_populate==3))) {
         LogInfo "Reading KotOR II - TSL (Cloud) saves...";
-        unless (opendir SAVDIR2, $path{tsl_cloud}) {                                        #saves directory not found
+        unless (opendir SAVDIR2, $kseInitializer->{path}->{tsl_cloud}) {
+            #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
               -message=>'Could not find cloudsaves directory for KotOR2',-type=>'Ok');
             LogInfo ('KSE could not find cloudsaves directory for KotOR2.');
-            $use_tsl_cloud=0;
+            $kseInitializer->{use_tsl_cloud}=0;
         }
 
-        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{tsl_cloud}\\$_"} readdir(SAVDIR2);    #read all directories in saves dir
+        LogTrace("read all dirs");
+
+        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{tsl_cloud}\\$_"} readdir(SAVDIR2);    #read all directories in saves dir
         close SAVDIR2;
         if ($branch_to_populate==3) {
-            $tree->delete('offsprings','#3');                                                        #if this is a re-populate, then delete any leaves from this branch
+            #if this is a re-populate, then delete any leaves from this branch
+            $tree->delete('offsprings','#3');
         }
         for (sort @savedirs) {
             /\\.*\\(.+?)$/;
@@ -7110,22 +6913,22 @@ sub Load {
             $tree->hide('entry','#3#'.$dir.'#');                                                       #give them something to talk about
         }
     }
-    if ($tjm_installed && $branch_to_populate == 3 || 4) {
-        if($branch_to_populate == 3 && $use_tsl_cloud == 1) { }
+    if ($kseInitializer->{tjm_installed} && $branch_to_populate == 3 || 4) {
+        if($branch_to_populate == 3 && $kseInitializer->{use_tsl_cloud} == 1) { }
         else
         {
             if($branch_to_populate == 3)
             {
                 LogInfo "Reading KotOR III - TJM saves...";
-                if(-e $path{tjm}."/saves") {# print "path found\n";
-                    unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
+                if(-e $kseInitializer->{path}->{tjm}."/saves") {# print "path found\n";
+                    unless (opendir SAVDIR3, $kseInitializer->{path}->{tjm}."/saves") {                                          #saves directory not found
                         $mw->messageBox(-title=>'Directory not found',
                           -message=>'Could not find saves directory for TJM',-type=>'Ok');
                         LogInfo ('KSE could not find saves directory for TJM.');
-                        $tjm_installed=0;
+                        $kseInitializer->{tjm_installed}=0;
                     }
 
-                    my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{tjm}\\saves\\$_"} readdir(SAVDIR3);  #read all directories in saves dir
+                    my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{tjm}\\saves\\$_"} readdir(SAVDIR3);  #read all directories in saves dir
                     close SAVDIR3;
                     if ($branch_to_populate==3) {
                         $tree->delete('offsprings','#3');                                                      #if this is a re-populate, then delete any leaves from this branch
@@ -7140,15 +6943,15 @@ sub Load {
                 }
                 else
                 {
-                    if(-e $path{tjm}."/saves") {# print "path found\n";
-                        unless (opendir SAVDIR3, $path{tjm}."/saves") {                                          #saves directory not found
+                    if(-e $kseInitializer->{path}->{tjm}."/saves") {# print "path found\n";
+                        unless (opendir SAVDIR3, $kseInitializer->{path}->{tjm}."/saves") {                                          #saves directory not found
                             $mw->messageBox(-title=>'Directory not found',
                               -message=>'Could not find saves directory for TJM',-type=>'Ok');
                             LogInfo ('KSE could not find saves directory for TJM.');
-                            $tjm_installed=0;
+                            $kseInitializer->{tjm_installed}=0;
                         }
 
-                        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$path{tjm}\\saves\\$_"} readdir(SAVDIR3);  #read all directories in saves dir
+                        my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{tjm}\\saves\\$_"} readdir(SAVDIR3);  #read all directories in saves dir
                         close SAVDIR3;
                         if ($branch_to_populate==4) {
                             $tree->delete('offsprings','#4');                                                      #if this is a re-populate, then delete any leaves from this branch
@@ -7176,8 +6979,8 @@ sub Load {
 
             if ($parms[1] == 1) { $gv = "Kotor 1"; }
             if ($parms[1] == 2) { $gv = "Kotor 2/TSL"; }
-            if ($parms[1] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 2/TSL Cloud"; }
-            if ($parms[1] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 3/TJM"; }
+            if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 2/TSL Cloud"; }
+            if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 3/TJM"; }
             if ($parms[1] == 4) { $gv = "Kotor 3/TJM"; }
 
             my $ent = $parms[2];
@@ -7218,12 +7021,12 @@ sub Load {
             my $gm;
 
             my @parms = split /#/, $treeitem;
-            LogDebug join /\n/, @parms;
+            LogDebug(join "\n", @parms);
 
             if ($parms[0] == 1) { $gv = "Kotor 1"; }
             if ($parms[0] == 2) { $gv = "Kotor 2/TSL"; }
-            if ($parms[0] == 3 && $use_tsl_cloud == 0) { $gv = "Kotor 2/TSL Cloud"; }
-            if ($parms[0] == 3 && $use_tsl_cloud == 1) { $gv = "Kotor 3/TJM"; }
+            if ($parms[0] == 3 && $kseInitializer->{use_tsl_cloud} == 0) { $gv = "Kotor 2/TSL Cloud"; }
+            if ($parms[0] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 3/TJM"; }
             if ($parms[0] == 4) { $gv = "Kotor 3/TJM"; }
 
             my $ent = $parms[2];
@@ -7343,13 +7146,13 @@ sub Load {
         #        CommitChanges($treeitem_destination);
         #        $tree->delete('offsprings',$treeitem_destination."#Globals");
         #        if ($gameversion==1) {
-        #              Read_Global_Vars("$path{kotor_save}\\$levels[1]",$parm1)
+        #              Read_Global_Vars("$kseInitializer->{path}->{kotor_save}\\$levels[1]",$parm1)
         #           }
         #        elsif ($gameversion==2) {
-        #              Read_Global_Vars("$path{tsl_save}\\$levels[1]",$parm1)
+        #              Read_Global_Vars("$kseInitializer->{path}->{tsl_save}\\$levels[1]",$parm1)
         #           }
         #        elsif ($gameversion==3) {
-        #              Read_Global_Vars("$path{tjm}\\saves\\$levels[1]",$parm1)
+        #              Read_Global_Vars("$kseInitializer->{path}->{tjm}\\saves\\$levels[1]",$parm1)
         #           }
         #    }
         #}
@@ -7359,8 +7162,8 @@ sub Load {
             my $gamever = shift;
             if($gamever == 1) { &Pop_KotOR; }
             if($gamever == 2) { &Pop_TSL;   }
-            if($gamever == 3 && $use_tsl_cloud == 1) { &Pop_TSL;   }
-            if($gamever == 3 && $use_tsl_cloud == 0) { &Pop_TJM;   }
+            if($gamever == 3 && $kseInitializer->{use_tsl_cloud} == 1) { &Pop_TSL;   }
+            if($gamever == 3 && $kseInitializer->{use_tsl_cloud} == 0) { &Pop_TJM;   }
             if($gamever == 4) { &Pop_TJM;   }
         }
 
@@ -7371,23 +7174,23 @@ sub Load {
             {
                 LogInfo "Loading KotOR data...";
                 $open{1} = 1;
-                if ($k1_installed)
+                if ($kseInitializer->{k1_installed})
                 {
-                    my $k1_bif=Bioware::BIF->new($path{kotor},undef,'2da');
-                    if ($k1_bif==undef)
+                    my $k1_bif=Bioware::BIF->new($kseInitializer->{path}->{kotor},undef,'2da');
+                    if (!(defined $k1_bif))
                     {
                         $k1_bif=try_extracted_data(1,undef,'2da');
                     }
-                    if ($k1_bif==undef)
+                    if (!(defined $k1_bif))
                     {
                         $mw->Dialog(-title=>'Bad path!',-text=>'Could not find 2DA.bif!\n Kotor',-buttons=>['OK'])->Show;
-                        $path{kotor}=$oldpath{kotor};
+                        $kseInitializer->{path}->{kotor}=$oldpath{kotor};
                         return;
                     }
                     ### spells.2da ###
-                    if (-e $path{kotor}."/override/spells.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/spells.2da") {
                         LogInfo ('KotOR1 spells.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/spells.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/spells.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {
                                 $powers_full1{label}{$k}=$hashref->{$k}{label};
@@ -7399,7 +7202,7 @@ sub Load {
 
 
                                 if ($hashref->{$k}{name}) {
-                                    $powers_full1{name}{$k}=string_from_resref($path{kotor},$hashref->{$k}{name},'KotOR1 Spells.2da')
+                                    $powers_full1{name}{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name},'KotOR1 Spells.2da')
                                 }
                                 if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/)) {
                                     $powers_short1{label}{$k}=$powers_full1{label}{$k};
@@ -7419,7 +7222,7 @@ sub Load {
                                 $powers_full1{name}{$k}=$hashref->{$k}{label};
                                 $powers_full1{icon}{$k}=$hashref->{$k}{iconresref};
                                 if ($hashref->{$k}{name}) {
-                                    $powers_full1{name}{$k}=string_from_resref($path{kotor},$hashref->{$k}{name})
+                                    $powers_full1{name}{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name})
                                 }
                                 if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/)) {
                                     $powers_short1{label}{$k}=$powers_full1{label}{$k};
@@ -7430,9 +7233,9 @@ sub Load {
                         }
                     }
                     ### appearance.2da ###
-                    if (-e $path{kotor}."/override/appearance.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/appearance.2da") {
                         LogInfo ('KotOR1 appearance.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/appearance.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/appearance.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {$appearance_hash1{$k}=$hashref->{$k}{label}}
                         }
@@ -7447,9 +7250,9 @@ sub Load {
                         }
                     }
                     ### portraits.2da ###
-                    if (-e $path{kotor}."/override/portraits.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/portraits.2da") {
                         LogInfo ('KotOR1 portraits.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/portraits.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/portraits.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{baseresref}) {$portraits_hash1{$k}=$hashref->{$k}{baseresref}}
                         }
@@ -7464,16 +7267,16 @@ sub Load {
                         }
                     }
                     ### feat.2da ###
-                    if (-e $path{kotor}."/override/feat.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/feat.2da") {
                         LogInfo ('KotOR1 feat.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/feat.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/feat.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {
                                 $feats_full1{label}{$k}=$hashref->{$k}{label};
                                 $feats_full1{name}{$k}=$hashref->{$k}{label};
                                 $feats_full1{icon}{$k}=$hashref->{$k}{icon};
                                 if ($hashref->{$k}{name}) {
-                                    $feats_full1{name}{$k}=string_from_resref($path{kotor},$hashref->{$k}{name},'KotOR1 Feat.2da');
+                                    $feats_full1{name}{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name},'KotOR1 Feat.2da');
                                 }
                                 if ( !($hashref->{$k}{label} =~ /XXX/)) {
                                     $feats_short1{label}{$k}=$feats_full1{label}{$k};
@@ -7494,7 +7297,7 @@ sub Load {
                                 $feats_full1{name}{$k}=$hashref->{$k}{label};
                                 $feats_full1{icon}{$k}=$hashref->{$k}{icon};
                                 if ($hashref->{$k}{name}) {
-                                    $feats_full1{name}{$k}=string_from_resref($path{kotor},$hashref->{$k}{name})
+                                    $feats_full1{name}{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name})
                                 }
                                 if ( !($hashref->{$k}{label} =~ /XXX/)) {
                                     $feats_short1{label}{$k}=$feats_full1{label}{$k};
@@ -7505,9 +7308,9 @@ sub Load {
                         }
                     }
                     ### soundset.2da ###
-                    if (-e $path{kotor}."/override/soundset.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/soundset.2da") {
                         LogInfo ('KotOR1 soundset.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/soundset.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/soundset.2da");
                         for my $k (keys %$hashref) {
                             if ($hashref->{$k}{label}) {$soundset_hash1{$k}=$hashref->{$k}{label}}
                         }
@@ -7522,11 +7325,11 @@ sub Load {
                         }
                     }
                     ### skills.2da ###
-                    if (-e $path{kotor}."/override/skills.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/skills.2da") {
                         LogInfo ('KotOR1 skills.2da override detected.');
-                        my $hashref=$twoda_obj->read2da($path{kotor}."/override/skills.2da");
+                        my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/skills.2da");
                         for my $k (keys %$hashref) {
-                            if ($hashref->{$k}{name}) {$skills_hash1{$k}=string_from_resref($path{kotor},$hashref->{$k}{name},'KotOR1 skills.2da')}
+                            if ($hashref->{$k}{name}) {$skills_hash1{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name},'KotOR1 skills.2da')}
                         }
 
                     }
@@ -7535,18 +7338,18 @@ sub Load {
                         unless (defined ($temp2dafile)) {$temp2dafile=$k1_bif->get_resource('dataxbox\\2da.bif','skills.2da')};
                         my $hashref=$twoda_obj->read2da($temp2dafile);
                         for my $k (keys %$hashref) {
-                            if ($hashref->{$k}{name}) {$skills_hash1{$k}=string_from_resref($path{kotor},$hashref->{$k}{name})}
+                            if ($hashref->{$k}{name}) {$skills_hash1{$k}=string_from_resref($kseInitializer->{path}->{kotor},$hashref->{$k}{name})}
                         }
                     }
                     ### classes.2da ###
-                    if (-e $path{kotor}."/override/classes.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/classes.2da") {
                         LogInfo ('KotOR1 classes.2da override detected.');
-                        my %classes_detail1=%{$twoda_obj->read2da($path{kotor}."/override/classes.2da")};
+                        my %classes_detail1=%{$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/classes.2da")};
                         for my $c (keys %classes_detail1) {
                             if ($classes_detail1{$c}{spellgaintable}) {
                                 $spellcasters1{$c}=1;
                             }
-                            my $cname=string_from_resref($path{kotor},$classes_detail1{$c}{name},'KotOR1 classes.2da');
+                            my $cname=string_from_resref($kseInitializer->{path}->{kotor},$classes_detail1{$c}{name},'KotOR1 classes.2da');
                             if  ($cname eq "Bad StrRef") {
                                 $classes_hash1{$c}=$classes_detail1{$c}{label} }
                             else {
@@ -7562,7 +7365,7 @@ sub Load {
                             if ($classes_detail1{$c}{spellgaintable}) {
                                 $spellcasters1{$c}=1;
                             }
-                            my $cname=string_from_resref($path{kotor},$classes_detail1{$c}{name});
+                            my $cname=string_from_resref($kseInitializer->{path}->{kotor},$classes_detail1{$c}{name});
                             if  ($cname eq "Bad StrRef") {
                                 $classes_hash1{$c}=$classes_detail1{$c}{label} }
                             else {
@@ -7571,9 +7374,9 @@ sub Load {
 
                     }
                     ### gender.2da ###
-                    if (-e $path{kotor}."/override/gender.2da") {
+                    if (-e $kseInitializer->{path}->{kotor}."/override/gender.2da") {
                         LogInfo ('KotOR1 gender.2da override detected.');
-                        my %gender_detail=%{$twoda_obj->read2da($path{kotor}."/override/gender.2da")};
+                        my %gender_detail=%{$twoda_obj->read2da($kseInitializer->{path}->{kotor}."/override/gender.2da")};
                         for my $g (keys %gender_detail) {$gender_hash1{$g}=$gender_detail{$g}{constant}}
 
                     }
@@ -7595,22 +7398,22 @@ sub Load {
 
                         our $twoda_obj=Bioware::TwoDA->new();
 
-                        my $k2_bif=Bioware::BIF->new($path{tsl},undef,'2da');
-                        if ($k2_bif==undef)
+                        my $k2_bif=Bioware::BIF->new($kseInitializer->{path}->{tsl},undef,'2da');
+                        if (!(defined $k2_bif))
                         {
                             $k2_bif=try_extracted_data(1,undef,'2da');
                         }
-                        if ($k2_bif==undef)
+                        if (!(defined $k2_bif))
                         {
                             $mw->Dialog(-title=>'Bad path!',-text=>'Could not find 2DA.bif!\n TSL',-buttons=>['OK'])->Show;
-                            $path{tsl}=$oldpath{tsl};
+                            $kseInitializer->{path}->{tsl}=$oldpath{tsl};
                             return;
                         }
                         ### spells.2da ###
-                        if (-e $path{tsl}."/override/spells.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/spells.2da")
                         {
                             LogInfo ('Kotor 2 spells.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/spells.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/spells.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{label})
@@ -7624,7 +7427,7 @@ sub Load {
 
                                     if ($hashref->{$k}{name})
                                     {
-                                        $powers_full2{name}{$k}=string_from_resref($path{tsl},$hashref->{$k}{name},'Kotor 2 Spells.2da')
+                                        $powers_full2{name}{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name},'Kotor 2 Spells.2da')
                                     }
                                     if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/))
                                     {
@@ -7649,7 +7452,7 @@ sub Load {
                                     $powers_full2{icon}{$k}=$hashref->{$k}{iconresref};
                                     if ($hashref->{$k}{name})
                                     {
-                                        $powers_full2{name}{$k}=string_from_resref($path{tsl},$hashref->{$k}{name})
+                                        $powers_full2{name}{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name})
                                     }
                                     if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/))
                                     {
@@ -7661,10 +7464,10 @@ sub Load {
                             }
                         }
                         ### appearance.2da ###
-                        if (-e $path{tsl}."/override/appearance.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/appearance.2da")
                         {
                             LogInfo ('Kotor 2 appearance.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/appearance.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/appearance.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{label})
@@ -7690,10 +7493,10 @@ sub Load {
                             }
                         }
                         ### portraits.2da ###
-                        if (-e $path{tsl}."/override/portraits.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/portraits.2da")
                         {
                             LogInfo ('Kotor 2 portraits.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/portraits.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/portraits.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{baseresref})
@@ -7719,10 +7522,10 @@ sub Load {
                             }
                         }
                         ### feat.2da ###
-                        if (-e $path{tsl}."/override/feat.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/feat.2da")
                         {
                             LogInfo ('Kotor 2 feat.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/feat.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/feat.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{label})
@@ -7732,7 +7535,7 @@ sub Load {
                                     $feats_full2{icon}{$k}=$hashref->{$k}{icon};
                                     if ($hashref->{$k}{name})
                                     {
-                                        $feats_full2{name}{$k}=string_from_resref($path{tsl},$hashref->{$k}{name},'Kotor 2 Feat.2da');
+                                        $feats_full2{name}{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name},'Kotor 2 Feat.2da');
                                     }
                                     if ( !($hashref->{$k}{label} =~ /XXX/))
                                     {
@@ -7757,7 +7560,7 @@ sub Load {
                                     $feats_full2{icon}{$k}=$hashref->{$k}{icon};
                                     if ($hashref->{$k}{name})
                                     {
-                                        $feats_full2{name}{$k}=string_from_resref($path{tsl},$hashref->{$k}{name});
+                                        $feats_full2{name}{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name});
                                     }
                                     if ( !($hashref->{$k}{label} =~ /XXX/))
                                     {
@@ -7769,10 +7572,10 @@ sub Load {
                             }
                         }
                         ### soundset.2da ###
-                        if (-e $path{tsl}."/override/soundset.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/soundset.2da")
                         {
                             LogInfo ('Kotor 2 soundset.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/soundset.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/soundset.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{label})
@@ -7798,15 +7601,15 @@ sub Load {
                             }
                         }
                         ### skills.2da ###
-                        if (-e $path{tsl}."/override/skills.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/skills.2da")
                         {
                             LogInfo ('Kotor 2 skills.2da override detected.');
-                            my $hashref=$twoda_obj->read2da($path{tsl}."/override/skills.2da");
+                            my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/skills.2da");
                             for my $k (keys %$hashref)
                             {
                                 if ($hashref->{$k}{name})
                                 {
-                                    $skills_hash2{$k}=string_from_resref($path{tsl},$hashref->{$k}{name},'Kotor 2 skills.2da');
+                                    $skills_hash2{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name},'Kotor 2 skills.2da');
                                 }
                             }
                         }
@@ -7822,22 +7625,22 @@ sub Load {
                             {
                                 if ($hashref->{$k}{name})
                                 {
-                                    $skills_hash2{$k}=string_from_resref($path{tsl},$hashref->{$k}{name});
+                                    $skills_hash2{$k}=string_from_resref($kseInitializer->{path}->{tsl},$hashref->{$k}{name});
                                 }
                             }
                         }
                         ### classes.2da ###
-                        if (-e $path{tsl}."/override/classes.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/classes.2da")
                         {
                             LogInfo ('Kotor 2 classes.2da override detected.');
-                            my %classes_detail2=%{$twoda_obj->read2da($path{tsl}."/override/classes.2da")};
+                            my %classes_detail2=%{$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/classes.2da")};
                             for my $c (keys %classes_detail2)
                             {
                                 if ($classes_detail2{$c}{spellgaintable})
                                 {
                                     $spellcasters2{$c}=2;
                                 }
-                                my $cname=string_from_resref($path{tsl},$classes_detail2{$c}{name},'Kotor 2 classes.2da');
+                                my $cname=string_from_resref($kseInitializer->{path}->{tsl},$classes_detail2{$c}{name},'Kotor 2 classes.2da');
                                 if  ($cname eq "Bad StrRef")
                                 {
                                     $classes_hash2{$c}=$classes_detail2{$c}{label}
@@ -7862,7 +7665,7 @@ sub Load {
                                 {
                                     $spellcasters2{$c}=2;
                                 }
-                                my $cname=string_from_resref($path{tsl},$classes_detail2{$c}{name});
+                                my $cname=string_from_resref($kseInitializer->{path}->{tsl},$classes_detail2{$c}{name});
                                 if  ($cname eq "Bad StrRef")
                                 {
                                     $classes_hash2{$c}=$classes_detail2{$c}{label}
@@ -7874,10 +7677,10 @@ sub Load {
                             }
                         }
                         ### gender.2da ###
-                        if (-e $path{tsl}."/override/gender.2da")
+                        if (-e $kseInitializer->{path}->{tsl}."/override/gender.2da")
                         {
                             LogInfo ('Kotor 2 gender.2da override detected.');
-                            my %gender_detail=%{$twoda_obj->read2da($path{tsl}."/override/gender.2da")};
+                            my %gender_detail=%{$twoda_obj->read2da($kseInitializer->{path}->{tsl}."/override/gender.2da")};
                             for my $g (keys %gender_detail) {$gender_hash2{$g}=$gender_detail{$g}{constant}}
                         }
                         else
@@ -7904,22 +7707,22 @@ sub Load {
 
                 our $twoda_obj=Bioware::TwoDA->new();
 
-                my $k3_bif=Bioware::BIF->new($path{tjm},undef,'2da');
-                if ($k3_bif==undef)
+                my $k3_bif=Bioware::BIF->new($kseInitializer->{path}->{tjm},undef,'2da');
+                if (!(defined $k3_bif))
                 {
                     $k3_bif=try_extracted_data(1,undef,'2da');
                 }
-                if ($k3_bif==undef)
+                if (!(defined $k3_bif))
                 {
                     $mw->Dialog(-title=>'Bad path!',-text=>'Could not find 2DA.bif!\n tjm',-buttons=>['OK'])->Show;
-                    $path{tjm}=$oldpath{tjm};
+                    $kseInitializer->{path}->{tjm}=$oldpath{tjm};
                     return;
                 }
                 ### spells.2da ###
-                if (-e $path{tjm}."/override/spells.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/spells.2da")
                 {
                     LogInfo ('Kotor 2 spells.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/spells.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/spells.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{label})
@@ -7933,7 +7736,7 @@ sub Load {
 
                             if ($hashref->{$k}{name})
                             {
-                                $powers_full3{name}{$k}=string_from_resref($path{tjm},$hashref->{$k}{name},'Kotor 2 Spells.2da')
+                                $powers_full3{name}{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name},'Kotor 2 Spells.2da')
                             }
                             if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/))
                             {
@@ -7958,7 +7761,7 @@ sub Load {
                             $powers_full3{icon}{$k}=$hashref->{$k}{iconresref};
                             if ($hashref->{$k}{name})
                             {
-                                $powers_full3{name}{$k}=string_from_resref($path{tjm},$hashref->{$k}{name})
+                                $powers_full3{name}{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name})
                             }
                             if (($hashref->{$k}{label}=~/^FORCE_POWER/) && !($hashref->{$k}{label} =~ /XXX/))
                             {
@@ -7970,10 +7773,10 @@ sub Load {
                     }
                 }
                 ### appearance.2da ###
-                if (-e $path{tjm}."/override/appearance.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/appearance.2da")
                 {
                     LogInfo ('Kotor 2 appearance.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/appearance.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/appearance.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{label})
@@ -7999,10 +7802,10 @@ sub Load {
                     }
                 }
                 ### portraits.2da ###
-                if (-e $path{tjm}."/override/portraits.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/portraits.2da")
                 {
                     LogInfo ('Kotor 2 portraits.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/portraits.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/portraits.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{baseresref})
@@ -8028,10 +7831,10 @@ sub Load {
                     }
                 }
                 ### feat.2da ###
-                if (-e $path{tjm}."/override/feat.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/feat.2da")
                 {
                     LogInfo ('Kotor 2 feat.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/feat.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/feat.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{label})
@@ -8041,7 +7844,7 @@ sub Load {
                             $feats_full3{icon}{$k}=$hashref->{$k}{icon};
                             if ($hashref->{$k}{name})
                             {
-                                $feats_full3{name}{$k}=string_from_resref($path{tjm},$hashref->{$k}{name},'Kotor 2 Feat.2da');
+                                $feats_full3{name}{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name},'Kotor 2 Feat.2da');
                             }
                             if ( !($hashref->{$k}{label} =~ /XXX/))
                             {
@@ -8066,7 +7869,7 @@ sub Load {
                             $feats_full3{icon}{$k}=$hashref->{$k}{icon};
                             if ($hashref->{$k}{name})
                             {
-                                $feats_full3{name}{$k}=string_from_resref($path{tjm},$hashref->{$k}{name});
+                                $feats_full3{name}{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name});
                             }
                             if ( !($hashref->{$k}{label} =~ /XXX/))
                             {
@@ -8078,10 +7881,10 @@ sub Load {
                     }
                 }
                 ### soundset.2da ###
-                if (-e $path{tjm}."/override/soundset.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/soundset.2da")
                 {
                     LogInfo ('Kotor 2 soundset.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/soundset.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/soundset.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{label})
@@ -8107,15 +7910,15 @@ sub Load {
                     }
                 }
                 ### skills.2da ###
-                if (-e $path{tjm}."/override/skills.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/skills.2da")
                 {
                     LogInfo ('Kotor 2 skills.2da override detected.');
-                    my $hashref=$twoda_obj->read2da($path{tjm}."/override/skills.2da");
+                    my $hashref=$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/skills.2da");
                     for my $k (keys %$hashref)
                     {
                         if ($hashref->{$k}{name})
                         {
-                            $skills_hash3{$k}=string_from_resref($path{tjm},$hashref->{$k}{name},'Kotor 2 skills.2da');
+                            $skills_hash3{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name},'Kotor 2 skills.2da');
                         }
                     }
                 }
@@ -8131,22 +7934,21 @@ sub Load {
                     {
                         if ($hashref->{$k}{name})
                         {
-                            $skills_hash3{$k}=string_from_resref($path{tjm},$hashref->{$k}{name});
+                            $skills_hash3{$k}=string_from_resref($kseInitializer->{path}->{tjm},$hashref->{$k}{name});
                         }
                     }
                 }
                 ### classes.2da ###
-                if (-e $path{tjm}."/override/classes.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/classes.2da")
                 {
                     LogInfo ('Kotor 2 classes.2da override detected.');
-                    my %classes_detail2=%{$twoda_obj->read2da($path{tjm}."/override/classes.2da")};
-                    for my $c (keys %classes_detail2)
-                    {
+                    my %classes_detail3=%{$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/classes.2da")};
+                    for my $c (keys %classes_detail3){
                         if ($classes_detail3{$c}{spellgaintable})
                         {
                             $spellcasters3{$c}=2;
                         }
-                        my $cname=string_from_resref($path{tjm},$classes_detail3{$c}{name},'Kotor 2 classes.2da');
+                        my $cname=string_from_resref($kseInitializer->{path}->{tjm},$classes_detail3{$c}{name},'Kotor 2 classes.2da');
                         if  ($cname eq "Bad StrRef")
                         {
                             $classes_hash3{$c}=$classes_detail3{$c}{label}
@@ -8164,14 +7966,14 @@ sub Load {
                     {
                         $twodaref=$k3_bif->get_resource('dataxbox\\2da.bif','classes.2da');
                     }
-                    my %classes_detail2=%{$twoda_obj->read2da($twodaref)};
-                    for my $c (keys %classes_detail2)
+                    my %classes_detail3=%{$twoda_obj->read2da($twodaref)};
+                    for my $c (keys %classes_detail3)
                     {
                         if ($classes_detail3{$c}{spellgaintable})
                         {
                             $spellcasters3{$c}=2;
                         }
-                        my $cname=string_from_resref($path{tjm},$classes_detail3{$c}{name});
+                        my $cname=string_from_resref($kseInitializer->{path}->{tjm},$classes_detail3{$c}{name});
                         if  ($cname eq "Bad StrRef")
                         {
                             $classes_hash3{$c}=$classes_detail3{$c}{label}
@@ -8183,10 +7985,10 @@ sub Load {
                     }
                 }
                 ### gender.2da ###
-                if (-e $path{tjm}."/override/gender.2da")
+                if (-e $kseInitializer->{path}->{tjm}."/override/gender.2da")
                 {
                     LogInfo ('Kotor 2 gender.2da override detected.');
-                    my %gender_detail=%{$twoda_obj->read2da($path{tjm}."/override/gender.2da")};
+                    my %gender_detail=%{$twoda_obj->read2da($kseInitializer->{path}->{tjm}."/override/gender.2da")};
                     for my $g (keys %gender_detail) {$gender_hash3{$g}=$gender_detail{$g}{constant}}
                 }
                 else

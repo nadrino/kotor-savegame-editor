@@ -99,3 +99,5 @@ sub LogTrace{
   my $logMessage = shift;
   LogMessage(6, $logMessage);
 }
+
+1;
