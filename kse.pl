@@ -2034,7 +2034,9 @@ sub Populate_AreaContainer{
         # my $containerDisplayTitle = sprintf( "%-32s%s", $containerTag, $containerName );
         my $containerDisplayTitle = sprintf( "%s (%s)", $containerName, $containerTag );
 
-        if( $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('HasInventory')]{Value} ){
+        my $fieldIndex = $containerList->[$iContainer]->get_field_ix_by_label('HasInventory');
+        if( !defined($fieldIndex) ){ $fieldIndex = 0; }
+        if( $containerList->[$iContainer]{Fields}[$fieldIndex]{Value} ){
 
             LogDebug "-> ".$containerDisplayTitle;
             $tree->add(
@@ -2048,13 +2050,15 @@ sub Populate_AreaContainer{
             if( defined($itemListField) ){
                 my $itemList = $containerList->[$iContainer]{Fields}[$itemListField]{Value};
                 # for my $item (sort @items){
+                my $length = @$itemList;
+                LogDebug("Size of itemlist: ".$length);
                 foreach(@$itemList){
 
-                    if( 	$containerType eq 'Creatures'
-                      and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
-                        # skip
-                        next;
-                    }
+                    # if( 	$containerType eq 'Creatures'
+                    #   and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
+                    #     # skip
+                    #     next;
+                    # }
 
                     my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 
@@ -4886,7 +4890,7 @@ sub SpawnAddInventoryWidgets {
         my $git_gff = $datahash->{'GFF-git'};
 
         my $containerList;
-        if( $containerType eq 'Stores' ){
+        if   ( $containerType eq 'Stores' ){
             $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
         }
         elsif( $containerType eq 'Placeables' ){
@@ -4903,7 +4907,7 @@ sub SpawnAddInventoryWidgets {
         foreach(@$containerList) {
             my $containerTag = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('Tag')]{Value};
             my $containerTreeNameExpected = $iContainer."_".$containerTag;
-            if( $containerTreeName == $containerTreeNameExpected ){
+            if( $containerTreeName eq $containerTreeNameExpected ){
                 $selectedContainerId = $iContainer;
                 # $containerName = $containerTag;
             }
@@ -4922,6 +4926,7 @@ sub SpawnAddInventoryWidgets {
         push @spawned_widgets,$labelXPosition;
         my $xPosition = $containerList->[$selectedContainerId]{Fields}[$containerList->[$selectedContainerId]->get_field_ix_by_label('X')]{Value};
         my $boxXPosition=$mw->Label(-text=>$xPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>725/$x,-rely=>50/$y,-anchor=>'sw');
+        if(!defined($boxXPosition)){ $boxXPosition = 0; }
         push @spawned_widgets,$boxXPosition;
 
         ## Y Position
@@ -4930,6 +4935,7 @@ sub SpawnAddInventoryWidgets {
         push @spawned_widgets,$labelYPosition;
         my $yPosition = $containerList->[$selectedContainerId]{Fields}[$containerList->[$selectedContainerId]->get_field_ix_by_label('Y')]{Value};
         my $boxYPosition=$mw->Label(-text=>$yPosition,-background=>'white',-font=>['MS Sans Serif','10'])->place(-relx=>725/$x,-rely=>75/$y,-anchor=>'sw');
+        if(!defined($boxYPosition)){ $boxYPosition = 0; }
         push @spawned_widgets,$boxYPosition;
 
         ## Z Position
@@ -5419,7 +5425,7 @@ sub Generate_Master_Item_List {
         }
         else {
             my $bif_obj=Bioware::BIF->new($registered_path,undef,'2da');
-            if ($bif_obj==undef) { $bif_obj=try_extracted_data($gameversion,undef,'2da');}
+            if (!defined($bif_obj)) { $bif_obj=try_extracted_data($gameversion,undef,'2da');}
             my $temp2dafile=$bif_obj->get_resource('data\\2da.bif','baseitems.2da');
             unless (defined ($temp2dafile)) {$temp2dafile=$bif_obj->get_resource('dataxbox\\2da.bif','baseitems.2da')};
             $hashref=$twoda_obj->read2da($temp2dafile);

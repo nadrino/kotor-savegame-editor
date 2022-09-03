@@ -425,7 +425,7 @@ sub writeField {
         my $exolocstr=$field->{'Value'};
         my $exolocsubstr_ref=$exolocstr->{'Substrings'};
         my @exolocsubstrs=@$exolocsubstr_ref;
-        my $packed_substrs;
+        my $packed_substrs = "";
         for my $exolocsubstr (@exolocsubstrs) {
             my $exolocsubstr_len=length $exolocsubstr->{'Value'};
             $packed_substrs .= pack('V V',$exolocsubstr->{'StringID'},$exolocsubstr_len). $exolocsubstr->{'Value'};
@@ -527,7 +527,7 @@ sub writeFieldScalar {
         my $exolocstr=$field->{'Value'};
         my $exolocsubstr_ref=$exolocstr->{'Substrings'};
         my @exolocsubstrs=@$exolocsubstr_ref;
-        my $packed_substrs;
+        my $packed_substrs = "";
         for my $exolocsubstr (@exolocsubstrs) {
             my $exolocsubstr_len=length $exolocsubstr->{'Value'};
             $packed_substrs .= pack('V V',$exolocsubstr->{'StringID'},$exolocsubstr_len). $exolocsubstr->{'Value'};
