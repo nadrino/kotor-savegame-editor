@@ -12,8 +12,16 @@ if not exist "%HERE%\strawberry-perl-5.16.3.1-32bit-portable\portableshell.bat" 
 )
 
 :: Adding local perl libs
+setlocal
 set PATH=%HERE%\strawberry-perl-5.16.3.1-32bit-portable\perl\bin;%PATH%
 set PATH=%HERE%\strawberry-perl-5.16.3.1-32bit-portable\perl\site\bin;%PATH%
+
+@REM if not defined %PATH% or echo ;%PATH%; | find /C /I ";<%HERE%\strawberry-perl-5.16.3.1-32bit-portable\perl\bin>;"(
+@REM
+@REM )
+@REM if echo ;%PATH%; | find /C /I ";<%HERE%\strawberry-perl-5.16.3.1-32bit-portable\perl\site\bin>;"(
+@REM
+@REM )
 
 :: Compile
 echo Compiling KSE...
@@ -27,3 +35,5 @@ echo Applying icon...
 
 echo Launching KSE...
 call .\KSE.exe
+
+endlocal

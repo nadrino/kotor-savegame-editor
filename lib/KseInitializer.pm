@@ -12,8 +12,9 @@ sub new {
   my $class = shift;
   my $mainWindowRef = shift;
   my $self = {
-    k1_installed   => 0
+    k1_installed     => 0
     , k2_installed   => 0
+    , tjm_installed  => 0
     , use_tsl_cloud  => 0
     , mainWindowRef  => $mainWindowRef
   };

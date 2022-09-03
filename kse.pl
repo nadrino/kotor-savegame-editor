@@ -234,7 +234,8 @@ our %tsl_npcs=qw(
   8       T3m4
   9       VisasMarr
   10      Hanharr
-  11      Disciple);
+  11      Disciple
+);
 
 our %tjm_npcs=qw(
   0       Atton
@@ -437,7 +438,8 @@ sub updscrl {
     }
 }
 ############################
-sub What {  #called by BrowseCmd
+sub What {
+    # called by BrowseCmd
     ############################
     #	for my $wid(@spawned_widgets)
     #	{
@@ -471,6 +473,7 @@ sub What {  #called by BrowseCmd
     if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
 
     my $ent = $parms[2];
+    $_ = $ent;
     my $su = $_;
     $_ = $ent;
     /(.......-.)/;
@@ -1569,7 +1572,7 @@ sub Populate_Feats {
     my $gff=${$tree->entrycget( '#'.$gameversion.'#'.(split /#/,$treeitem)[2],-data)}{'GFF-ifo'};
     my $mod_playerlist=$gff->{Main}{Fields}[$gff->{Main}->get_field_ix_by_label('Mod_PlayerList')]{Value}[0];
     my @feat_list=@{$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('FeatList')]{'Value'}};
-    	print join "\n", @feat_list;
+    # print join "\n", @feat_list;
     my $i=0;
     for my $feat_struct (@feat_list) {
         $tree->add($treeitem."#Feat".$feats_full{label}{$feat_struct->{'Fields'}{'Value'}},-text=>"$feats_full{name}{$feat_struct->{Fields}{Value}}",-data=>'can modify');
@@ -6227,10 +6230,9 @@ sub read_global_jrls {
         }
         else {
             my $k1_bif=Bioware::BIF->new($kseInitializer->{path}->{kotor},24,'jrl');
-            if ($k1_bif ==undef) {$k1_bif=try_extracted_data(1,24,'jrl')}
+            if (!defined($k1_bif)) {$k1_bif=try_extracted_data(1,24,'jrl')}
             my $tempjrlfile=$k1_bif->get_resource('data\\_newbif.bif','global.jrl');
             $journal1->read_gff_scalar($tempjrlfile);
-
         }
     }
     if ($kseInitializer->{k2_installed}) {
@@ -6241,7 +6243,7 @@ sub read_global_jrls {
         }
         else {
             my $k2_bif=Bioware::BIF->new($kseInitializer->{path}->{tsl},1,'jrl');
-            if ($k2_bif==undef){
+            if (!defined($k2_bif)){
                 $journal2->read_gff_file(try_extracted_data(undef,'Get Journal',undef));
             }
             else
@@ -6260,7 +6262,7 @@ sub read_global_jrls {
         }
         else {
             my $tjm_bif=Bioware::BIF->new($kseInitializer->{path}->{tjm},1,'jrl');
-            if ($tjm_bif==undef){
+            if (!defined($tjm_bif)){
                 $journal3->read_gff_file(try_extracted_data(undef,'Get Journal',undef));
             }
             else
@@ -6268,7 +6270,6 @@ sub read_global_jrls {
                 my $tempjrlfile=$tjm_bif->get_resource('data\\dialogs.bif','global.jrl');
                 $journal3->read_gff_scalar($tempjrlfile);
             }
-
         }
     }
 }
@@ -6896,8 +6897,6 @@ sub Load {
             LogInfo ('KSE could not find cloudsaves directory for KotOR2.');
             $kseInitializer->{use_tsl_cloud}=0;
         }
-
-        LogTrace("read all dirs");
 
         my @savedirs=grep { !(/\\\.+$/) && -d } map {"$kseInitializer->{path}->{tsl_cloud}\\$_"} readdir(SAVDIR2);    #read all directories in saves dir
         close SAVDIR2;
