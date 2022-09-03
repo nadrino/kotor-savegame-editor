@@ -1557,9 +1557,6 @@ sub Populate_Feats {
     elsif ($gameversion==4) {
         %feats_full=%feats_full3;
     }
-    else{
-        LogFatal("NOT OK?");
-    }
 
     #	while( my ($key, $value) = each (%feats_full))
     #	{
@@ -2039,8 +2036,6 @@ sub Populate_AreaContainer{
 
         if( $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('HasInventory')]{Value} ){
 
-            my $itemList = $containerList->[$iContainer]{Fields}[$containerList->[$iContainer]->get_field_ix_by_label('ItemList')]{Value};
-
             LogDebug "-> ".$containerDisplayTitle;
             $tree->add(
               $treeItem."#".$iContainer."_".$containerTag,
@@ -2049,35 +2044,40 @@ sub Populate_AreaContainer{
             );
 
             my $iItem=0;
-            # for my $item (sort @items){
-            foreach(@$itemList){
+            my $itemListField = $containerList->[$iContainer]->get_field_ix_by_label('ItemList');
+            if( defined($itemListField) ){
+                my $itemList = $containerList->[$iContainer]{Fields}[$itemListField]{Value};
+                # for my $item (sort @items){
+                foreach(@$itemList){
 
-                if( 	$containerType eq 'Creatures'
-                  and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
-                    # skip
-                    next;
+                    if( 	$containerType eq 'Creatures'
+                      and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
+                        # skip
+                        next;
+                    }
+
+                    my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
+
+                    my $itemName;
+                    if( $itemStrref == -1 ) {
+                        $itemName = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value};
+                    }
+                    else {
+                        $itemName=Bioware::TLK::string_from_resref( $registeredPath, $itemStrref );
+                    }
+
+                    my $itemTag 	= lc $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Tag')]{Value};
+                    my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
+                    my $itemTitle	= sprintf( "%s [%d] (%s)", $itemName, $itemStack, $itemTag );
+
+                    LogDebug "     ".$itemTitle;
+                    $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem, -text=>$itemTitle, -data=>'can modify');
+                    $tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem);
+                    $iItem++;
+
                 }
-
-                my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
-
-                my $itemName;
-                if( $itemStrref == -1 ) {
-                    $itemName = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{Substrings}[0]{Value};
-                }
-                else {
-                    $itemName=Bioware::TLK::string_from_resref( $registeredPath, $itemStrref );
-                }
-
-                my $itemTag 	= lc $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Tag')]{Value};
-                my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
-                my $itemTitle	= sprintf( "%s [%d] (%s)", $itemName, $itemStack, $itemTag );
-
-                LogDebug "     ".$itemTitle;
-                $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem, -text=>$itemTitle, -data=>'can modify');
-                $tree->hide('entry',$treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem);
-                $iItem++;
-
             }
+
         }
         else{
             if($containerType eq 'Doors'){
