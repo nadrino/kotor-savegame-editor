@@ -2054,6 +2054,7 @@ sub Populate_AreaContainer{
                 LogDebug("Size of itemlist: ".$length);
                 foreach(@$itemList){
 
+                    # TODO: Reenable this check, and make sure the item you add have this flag ON.
                     # if( 	$containerType eq 'Creatures'
                     #   and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
                     #     # skip
@@ -5159,13 +5160,21 @@ sub SpawnAddInventoryWidgets {
                 elsif ($treeitem =~ /#Area#Stores#/) {
                     $gitContainterStruct = $dataGff->{Main}{Fields}[$dataGff->{Main}->get_field_ix_by_label('StoreList')]{Value};
                 }
-                $itemList = $gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value};
-                if( scalar @{$itemList} == 0 ){
+                my $itemListField = $gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList');
+                unless( defined($itemListField) ){
+                    $itemListField = 0;
                     $gitContainterStruct->[$subInventoryIndex]->createField('Type'=>FIELD_LIST, 'Label'=>'ItemList');
                     # $gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value} = ();
                     # $itemList = [\@$gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}];
                     $isEmpty = 1;
                 }
+                $itemList = $gitContainterStruct->[$subInventoryIndex]{Fields}[$itemListField]{Value};
+                # if( scalar @{$itemList} == 0 ){
+                #     $gitContainterStruct->[$subInventoryIndex]->createField('Type'=>FIELD_LIST, 'Label'=>'ItemList');
+                #     # $gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value} = ();
+                #     # $itemList = [\@$gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}];
+                #     $isEmpty = 1;
+                # }
             }
             else {
                 my $dataGff = $datahash->{'GFF-inv'};
