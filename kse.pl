@@ -2054,13 +2054,6 @@ sub Populate_AreaContainer{
                 LogDebug("Size of itemlist: ".$length);
                 foreach(@$itemList){
 
-                    # TODO: Reenable this check, and make sure the item you add have this flag ON.
-                    # if( 	$containerType eq 'Creatures'
-                    #   and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
-                    #     # skip
-                    #     next;
-                    # }
-
                     my $itemStrref = $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('LocalizedName')]{Value}{StringRef};
 
                     my $itemName;
@@ -2074,6 +2067,14 @@ sub Populate_AreaContainer{
                     my $itemTag 	= lc $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Tag')]{Value};
                     my $itemStack 	= $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('StackSize')]{Value};
                     my $itemTitle	= sprintf( "%s [%d] (%s)", $itemName, $itemStack, $itemTag );
+
+                    # TODO: Reenable this check, and make sure the item you add have this flag ON.
+                    if( 	$containerType eq 'Creatures'
+                      and $itemList->[$iItem]{Fields}[$itemList->[$iItem]->get_field_ix_by_label('Dropable')]{Value} == 0 ){
+                        # skip
+                        LogDebug "     SKIPPING NOT DROPPABLE: ".$itemTitle;
+                        next;
+                    }
 
                     LogDebug "     ".$itemTitle;
                     $tree->add($treeItem."#".$iContainer."_".$containerTag."#".$itemTag."/".$iItem, -text=>$itemTitle, -data=>'can modify');
@@ -5169,12 +5170,12 @@ sub SpawnAddInventoryWidgets {
                     $isEmpty = 1;
                 }
                 $itemList = $gitContainterStruct->[$subInventoryIndex]{Fields}[$itemListField]{Value};
-                # if( scalar @{$itemList} == 0 ){
+                if( scalar @{$itemList} == 0 ){
                 #     $gitContainterStruct->[$subInventoryIndex]->createField('Type'=>FIELD_LIST, 'Label'=>'ItemList');
                 #     # $gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value} = ();
                 #     # $itemList = [\@$gitContainterStruct->[$subInventoryIndex]{Fields}[$gitContainterStruct->[$subInventoryIndex]->get_field_ix_by_label('ItemList')]{Value}];
-                #     $isEmpty = 1;
-                # }
+                    $isEmpty = 1;
+                }
             }
             else {
                 my $dataGff = $datahash->{'GFF-inv'};
@@ -5291,6 +5292,10 @@ sub SpawnAddInventoryWidgets {
 
                     if (defined($uti_gff->{Main}->get_field_ix_by_label($fieldLabel))) {
                         # Propagate the uti field content
+                        # Not working??
+                        # $newItemStruct->createField('Type'=>FIELD_BYTE, 'Label'=>'Dropable','Value'=>1 );
+                        # $new_feat->createField('Type'=>FIELD_WORD,'Label'=>'Feat','Value'=>$featvalue2);
+                        # $newItemStruct->{Fields}[$newItemStruct->get_field_ix_by_label('Dropable')]{Value} = 1;
                         push @{$newItemStruct->{Fields}}, $uti_gff->{Main}{Fields}[$uti_gff->{Main}->get_field_ix_by_label($fieldLabel)];
                     }
                     else {
@@ -5343,7 +5348,7 @@ sub SpawnAddInventoryWidgets {
             else{
                 push @{$itemList}, $newItemStruct;
             }
-            LogDebug "NOW = ".(scalar @{$itemList});
+            # LogDebug "NOW = ".(scalar @{$itemList});
 
             # Printing the new item in the displayed list
             if ($treeitem =~ /#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~ /#Area#Stores#/) {
