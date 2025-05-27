@@ -4436,7 +4436,7 @@ sub SpawnDoorWidgets {
     my $selectedDoorId;
     foreach(@$doorsList) {
         my $ref = $doorsList->[$iDoor]{Fields}[$doorsList->[$iDoor]->get_field_ix_by_label('Tag')]{Value};
-        if($iDoor."_".$ref == $doorTreeName){
+        if($iDoor."_".$ref eq $doorTreeName){
             $selectedDoorId = $iDoor;
             $doorName = $ref;
         }
@@ -4483,6 +4483,20 @@ sub SpawnDoorWidgets {
     my $boxLocked=$mw->Entry(-textvariable=>\$locked,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>200/$y,-anchor=>'sw');
     push @spawned_widgets,$boxLocked;
 
+    ## OpenLockDC
+    my $labelOpenLockDC=$mw->Label(-text=>'OpenLockDC: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>225/$y,-anchor=>'sw');
+    push @spawned_widgets,$labelOpenLockDC;
+    my $openLockDC = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenLockDC')]{Value};
+    my $boxOpenLockDC=$mw->Entry(-textvariable=>\$openLockDC,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>225/$y,-anchor=>'sw');
+    push @spawned_widgets,$boxOpenLockDC;
+
+    ## Conversation
+    my $labelConversation=$mw->Label(-text=>'Conversation: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>250/$y,-anchor=>'sw');
+    push @spawned_widgets,$labelConversation;
+    my $conversation = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Conversation')]{Value};
+    my $boxConversation=$mw->Entry(-textvariable=>\$conversation,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>250/$y,-anchor=>'sw');
+    push @spawned_widgets,$boxConversation;
+
     ## CloseLockDC
     # my $labelLocked=$mw->Label(-text=>'CloseLockDC: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>200/$y,-anchor=>'sw');
     # push @spawned_widgets,$labelLocked;
@@ -4518,6 +4532,18 @@ sub SpawnDoorWidgets {
             }
             LogInfo "Updating ".$doorName." Locked value to: ".$locked;
             $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value}=$locked;
+        }
+
+        if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenLockDC')]{Value} != $openLockDC){
+            $openLockDC += 0;
+            LogInfo "Updating ".$doorName." OpenLockDC value to: ".$openLockDC;
+            $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenLockDC')]{Value}=$openLockDC;
+        }
+
+        $conversation .= "";
+        if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Conversation')]{Value} ne $conversation){
+            LogInfo "Updating ".$doorName." Conversation value to: ".$conversation;
+            $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Conversation')]{Value}=$conversation;
         }
 
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
