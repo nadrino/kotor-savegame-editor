@@ -146,7 +146,7 @@ use Tk::TList;
 use Tk::ItemStyle;
 # use Tk::ErrorDialog;
 require Tk::Dialog;
-our $version='v3.5.0';
+our $version='v3.5.1';
 if ($Tk::VERSION  eq '800.029') { $version .= ' alternate'}
 use Win32::FileOp;
 use Win32::TieRegistry;
