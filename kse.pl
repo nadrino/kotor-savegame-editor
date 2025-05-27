@@ -4490,11 +4490,18 @@ sub SpawnDoorWidgets {
     my $boxOpenLockDC=$mw->Entry(-textvariable=>\$openLockDC,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>225/$y,-anchor=>'sw');
     push @spawned_widgets,$boxOpenLockDC;
 
+    ## KeyRequired
+    my $labelKeyRequired=$mw->Label(-text=>'KeyRequired: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>250/$y,-anchor=>'sw');
+    push @spawned_widgets,$labelKeyRequired;
+    my $keyRequired = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('KeyRequired')]{Value};
+    my $boxKeyRequired=$mw->Entry(-textvariable=>\$keyRequired,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>250/$y,-anchor=>'sw');
+    push @spawned_widgets,$boxKeyRequired;
+
     ## Conversation
-    my $labelConversation=$mw->Label(-text=>'Conversation: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>250/$y,-anchor=>'sw');
+    my $labelConversation=$mw->Label(-text=>'Conversation: ',-font=>['MS Sans Serif','10'])->place(-relx=>650/$x,-rely=>275/$y,-anchor=>'sw');
     push @spawned_widgets,$labelConversation;
     my $conversation = $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Conversation')]{Value};
-    my $boxConversation=$mw->Entry(-textvariable=>\$conversation,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>250/$y,-anchor=>'sw');
+    my $boxConversation=$mw->Entry(-textvariable=>\$conversation,-background=>'white',-width=>10)->place(-relx=>782/$x,-rely=>275/$y,-anchor=>'sw');
     push @spawned_widgets,$boxConversation;
 
     ## CloseLockDC
@@ -4524,14 +4531,19 @@ sub SpawnDoorWidgets {
         if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value} != $locked){
             $locked += 0;
             # Sanity check
-            if($locked > 0){
-                $locked = 1;
-            }
-            else{
-                $locked = 0;
-            }
+            if($locked > 0){ $locked = 1; }
+            else{ $locked = 0; }
             LogInfo "Updating ".$doorName." Locked value to: ".$locked;
             $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('Locked')]{Value}=$locked;
+        }
+
+        if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('KeyRequired')]{Value} != $keyRequired){
+            $keyRequired += 0;
+            # Sanity check
+            if($keyRequired > 0){ $keyRequired = 1; }
+            else{ $keyRequired = 0; }
+            LogInfo "Updating ".$doorName." KeyRequired value to: ".$keyRequired;
+            $doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('KeyRequired')]{Value}=$keyRequired;
         }
 
         if($doorsList->[$selectedDoorId]{Fields}[$doorsList->[$selectedDoorId]->get_field_ix_by_label('OpenLockDC')]{Value} != $openLockDC){
