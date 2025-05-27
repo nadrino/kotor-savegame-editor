@@ -47,17 +47,17 @@ sub LogMessage{
   my $logMessage = shift;
 
   my ($sec,$min,$hour,$mday,$mon,$year)=localtime();
-  my $logTime = sprintf("%04s/%02s/%02s %02s:%02s:%02s", $year+1900, $mon+1, $mday, $hour, $min, $sec);
+  my $logTime = sprintf("%04s.%02s.%02s %02s:%02s:%02s", $year+1900, $mon+1, $mday, $hour, $min, $sec);
 
   my $logLevelStr;
   my $logLevelFmt;
-  if   ($logLevel == 0){ $logLevelStr = "[Fatal]"; $logLevelFmt = color("ON_BRIGHT_RED"); }
-  elsif($logLevel == 1){ $logLevelStr = "[Error]"; $logLevelFmt = color("BRIGHT_RED"); }
-  elsif($logLevel == 2){ $logLevelStr = "[Alert]"; $logLevelFmt = color("BRIGHT_MAGENTA"); }
-  elsif($logLevel == 3){ $logLevelStr = "[Warn ]"; $logLevelFmt = color("BRIGHT_YELLOW"); }
-  elsif($logLevel == 4){ $logLevelStr = "[Info ]"; $logLevelFmt = color("BRIGHT_GREEN");  }
-  elsif($logLevel == 5){ $logLevelStr = "[Debug]"; $logLevelFmt = color("BRIGHT_BLUE"); }
-  elsif($logLevel == 6){ $logLevelStr = "[Trace]"; $logLevelFmt = color("BRIGHT_CYAN"); }
+  if   ($logLevel == 0){ $logLevelStr = "FATAL"; $logLevelFmt = color("ON_BRIGHT_RED"); }
+  elsif($logLevel == 1){ $logLevelStr = "ERROR"; $logLevelFmt = color("BRIGHT_RED"); }
+  elsif($logLevel == 2){ $logLevelStr = "ALERT"; $logLevelFmt = color("BRIGHT_MAGENTA"); }
+  elsif($logLevel == 3){ $logLevelStr = " WARN"; $logLevelFmt = color("BRIGHT_YELLOW"); }
+  elsif($logLevel == 4){ $logLevelStr = " INFO"; $logLevelFmt = color("BRIGHT_GREEN");  }
+  elsif($logLevel == 5){ $logLevelStr = "DEBUG"; $logLevelFmt = color("BRIGHT_BLUE"); }
+  elsif($logLevel == 6){ $logLevelStr = "TRACE"; $logLevelFmt = color("BRIGHT_CYAN"); }
 
   my $logStr = $logTime." ".$logLevelStr.": ".$logMessage."\n";
 
