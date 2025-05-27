@@ -46,6 +46,24 @@ pp --gui -o KSE.exe kse.pl
 - Launch KSE.exe
 
 
+
+```shell
+.\strawberry-perl-5.32.1.1-32bit-portable\portableshell.bat
+cpan # CPAN CLI
+
+
+get Tk::HList Tk::Autoscroll Tk::DynaTabFrame
+get Win32::FileOp
+get pp
+
+install Tk::HList Tk::Autoscroll Tk::DynaTabFrame
+install Win32::FileOp
+force install pp
+
+exit # EXIT CPAN CLI
+```
+
+
 ## Contributors Prior to this Repository
 
 - FairStrides
