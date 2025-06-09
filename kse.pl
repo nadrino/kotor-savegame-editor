@@ -4790,7 +4790,7 @@ sub SpawnInventoryWidgets {
             $tree->entryconfigure($treeitem,-text=>$newtext);
 
             my $itemlist;
-            if( $treeitem =~/#Area#Placeables#/ ){
+            if   ( $treeitem =~/#Area#Placeables#/ ){
                 my $root='#'.$gameversion.'#'.$savegamedir;
                 my $datahash=$tree->entrycget($root,-data);
                 my $git_gff = $datahash->{'GFF-git'};
