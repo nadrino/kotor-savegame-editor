@@ -146,7 +146,7 @@ use Tk::TList;
 use Tk::ItemStyle;
 # use Tk::ErrorDialog;
 require Tk::Dialog;
-our $version='v3.5.1';
+our $version='v3.5.2';
 if ($Tk::VERSION  eq '800.029') { $version .= ' alternate'}
 use Win32::FileOp;
 use Win32::TieRegistry;
@@ -1997,7 +1997,7 @@ sub Populate_OtherAreas{
 
     my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
 
-    # loop over all the resource in savegame.sav
+    # loop over all available resources in savegame.sav
     for my $resource (@{$erf_sav->{'resources'}}) {
         # only considering "sav" resources
         next if "$resource->{'res_ext'}" ne "sav";
@@ -4465,19 +4465,8 @@ sub SpawnSoundsetWidgets {
 
 sub SpawnOtherAreasWidgets{
     LogDebug "SpawnOtherAreasWidgets";
-    my ($treeitem)=@_;
-    my $gameversion=(split /#/,$treeitem)[1];
-    my $savegamedir=(split /#/,$treeitem)[2];
 
-    my $root='#'.$gameversion.'#'.$savegamedir;
-    my $datahash=$tree->entrycget($root,-data);
-    my $erf_sav=$datahash->{'ERF-sav'};
-
-    # DEV
-    for my $resource (@{$erf_sav->{'resources'}}) {
-        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
-        LogDebug "RESOURCE: $res_check";
-    }
+    # first arg should be the area name
 
     # to be done
 }
