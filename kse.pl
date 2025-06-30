@@ -1997,20 +1997,20 @@ sub Populate_OtherAreas{
 
     my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
 
+    # loop over all the resource in savegame.sav
     for my $resource (@{$erf_sav->{'resources'}}) {
-        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
+        # only considering "sav" resources
+        next if "$resource->{'res_ext'}" ne "sav";
 
-        # continue if the resource isn't a `.sav`
-        next if $res_check !~ /\.sav$/;
+        # skip if it's the current module
+        my $moduleName = "$resource->{'res_ref'}";
+        next if lc($moduleName) eq lc($currentModuleName);
 
-        # excluding the current module
-        # $currentModuleName is in upper case...
-        next if lc($res_check) eq lc($currentModuleName . ".sav");
-
-        LogDebug "Found area: $res_check";
+        # Populating GUI
+        LogDebug "Found area: $moduleName";
         $tree->add(
-            $treeItem."#".$res_check,
-            -text=>$res_check,
+            $treeItem."#".$moduleName,
+            -text=>$moduleName,
             -data=>'can modify'
         );
     }
