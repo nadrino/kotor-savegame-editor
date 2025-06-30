@@ -662,6 +662,12 @@ sub write_erf {
         $self->{'build_day'}=(localtime)[7];
     }
 
+    # Filter out resources with a res_size equal to 0
+    $self->{'resources'} = [
+        grep { !exists $_->{'res_del'} } @{$self->{'resources'}}
+    ];
+
+
     $self->recalculate_packing();
 
 
