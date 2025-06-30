@@ -1985,22 +1985,27 @@ sub Populate_OtherAreas{
     my $treeItem = shift;
     my @treeLevels = split /#/, $treeItem;
     shift @treeLevels;
-    my $gameVersion = $treeLevels[0];
-    my $containerType = $treeLevels[2];
-    my $registeredPath = GetRegisteredPath($gameVersion);
 
-    LogInfo "Populating ".$containerType."...";
+    LogInfo "Populating ".$treeLevels[2]."...";
 
     # Getting back the save data
     my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
     my $dataHash = $tree->entrycget($treeRoot,-data);
     my $erf_sav  = $dataHash->{'ERF-sav'};
+    my $res_gff  = $dataHash->{'GFF-res'};
+
+
+    my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
 
     for my $resource (@{$erf_sav->{'resources'}}) {
         my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
 
         # continue if the resource isn't a `.sav`
         next if $res_check !~ /\.sav$/;
+
+        # excluding the current module
+        # $currentModuleName is in upper case...
+        next if lc($res_check) eq lc($currentModuleName . ".sav");
 
         LogDebug "Found area: $res_check";
         $tree->add(
