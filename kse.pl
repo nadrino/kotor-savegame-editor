@@ -451,6 +451,8 @@ sub What {
     #		$wid->destroy if $wid == "Tk::Button=HASH(0x2a05d5c)";
     #	}
 
+    # LogDebug "INSIDE WHAT";
+
     if(Exists($btn_add))   {$btn_add->destroy;}
     if(Exists($btn_add5))  {$btn_add5->destroy;}
     if(Exists($btn_add10)) {$btn_add10->destroy;}
@@ -505,8 +507,6 @@ sub What {
 
     @levels=split /#/,$parm1;
     shift @levels;
-
-
 
     if ( ($tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
     {
@@ -575,6 +575,7 @@ sub What {
                     }
                 }
                 elsif ($levels[2] eq 'Inventory') { Populate_Inventory($parm1) }
+                elsif ($levels[2] eq 'OtherAreas'){ Populate_OtherAreas($parm1); }
             }
             if ($#levels == 3) {
                 if    ($levels[2] eq 'NPCs')      { Populate_NPC($parm1) }
@@ -1232,6 +1233,7 @@ sub Populate_Level1 {
     $tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
 
     $tree->add($treeitem."#OtherAreas",-text=>"Other Areas");
+    $tree->add($treeitem."#OtherAreas#",-text=>"");  			$tree->hide('entry',$treeitem."#OtherAreas#");
 
     $tree->add($treeitem."#Area", -text=>'Current Area: '. $area_name." (".$lastModuleName.")",-data=>$area_name);
     $tree->add($treeitem."#Area#Placeables",-text=>"Placeables");  	$tree->hide('entry',$treeitem."#Area#Placeables");
@@ -1976,6 +1978,40 @@ sub Populate_NPC{
 }
 
 #>>>>>>>>>>>>>>>>>>>>
+sub Populate_OtherAreas{
+    LogDebug "Populate_OtherAreas";
+
+    # Pulling game version and gamedir (which savegame)
+    my $treeItem = shift;
+    my @treeLevels = split /#/, $treeItem;
+    shift @treeLevels;
+    my $gameVersion = $treeLevels[0];
+    my $containerType = $treeLevels[2];
+    my $registeredPath = GetRegisteredPath($gameVersion);
+
+    LogInfo "Populating ".$containerType."...";
+
+    # Getting back the save data
+    my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
+    my $dataHash = $tree->entrycget($treeRoot,-data);
+    my $erf_sav  = $dataHash->{'ERF-sav'};
+
+    for my $resource (@{$erf_sav->{'resources'}}) {
+        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
+
+        # continue if the resource isn't a `.sav`
+        next if $res_check !~ /\.sav$/;
+
+        LogDebug "Found area: $res_check";
+        $tree->add(
+            $treeItem."#".$res_check,
+            -text=>$res_check,
+            -data=>'can modify'
+        );
+    }
+
+    $tree->autosetmode();
+}
 sub Populate_AreaContainer{
 
     # Pulling game version and gamedir (which savegame)
@@ -2243,6 +2279,10 @@ sub SpawnWidgets{
             SpawnInventoryWidgets($treeitem,\$git_gff);
         }
     }
+    # elsif ($treeitem =~/#OtherArea#/){
+    #     # to be done
+    #     SpawnOtherAreasWidgets($treeitem);
+    # }
     elsif ($treeitem =~/#Equipment#/) {#print "laun";
         if($treeitem =~/#(NPC[0-9]*)#/)
         {
@@ -4418,6 +4458,24 @@ sub SpawnSoundsetWidgets {
 
 }
 
+sub SpawnOtherAreasWidgets{
+    LogDebug "SpawnOtherAreasWidgets";
+    my ($treeitem)=@_;
+    my $gameversion=(split /#/,$treeitem)[1];
+    my $savegamedir=(split /#/,$treeitem)[2];
+
+    my $root='#'.$gameversion.'#'.$savegamedir;
+    my $datahash=$tree->entrycget($root,-data);
+    my $erf_sav=$datahash->{'ERF-sav'};
+
+    # DEV
+    for my $resource (@{$erf_sav->{'resources'}}) {
+        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
+        LogDebug "RESOURCE: $res_check";
+    }
+
+    # to be done
+}
 sub SpawnDoorWidgets {
 
     my ($treeitem,$inv_gff_ref)=@_;
@@ -6026,13 +6084,6 @@ sub LoadData {
     unless ($tmpFileLastModSav=$erf->export_resource_to_temp_file("$lastModuleName.sav")) {               #export the last module as a temp file
         die "Could not find $lastModuleName.sav inside of $registered_path\\$gamedir\\savegame.sav";
     }
-
-    # DEV
-    for my $resource (@{$erf->{'resources'}}) {
-        my $res_check = lc "$resource->{'res_ref'}.$resource->{'res_ext'}";
-        LogDebug "RESOURCE: $res_check";
-    }
-
 
     my $erfLastModSav=Bioware::ERF->new();                                                               #create ERF for last module
     unless (my $tmp=$erfLastModSav->read_erf($tmpFileLastModSav->{'fn'})) {                                     #read last module structure
