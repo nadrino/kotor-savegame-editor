@@ -1993,6 +1993,8 @@ sub Populate_OtherAreas{
     my $dataHash = $tree->entrycget($treeRoot,-data);
     my $erf_sav  = $dataHash->{'ERF-sav'};
     my $res_gff  = $dataHash->{'GFF-res'};
+    my $gameVersion = $treeLevels[0];
+    my $registeredPath = GetRegisteredPath($gameVersion);
 
 
     my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
@@ -2006,10 +2008,55 @@ sub Populate_OtherAreas{
         my $moduleName = "$resource->{'res_ref'}";
         next if lc($moduleName) eq lc($currentModuleName);
 
+        LogDebug "Opening module: ".$moduleName;
+        my $tmpModuleFile;
+        unless ($tmpModuleFile=$erf_sav->export_resource_to_temp_file("$moduleName.sav")) {               #export the last module as a temp file
+            die "Could not find $moduleName.sav inside of savegame.sav";
+        }
+
+        my $erfModule=Bioware::ERF->new();                                                               #create ERF for last module
+        unless (my $tmp=$erfModule->read_erf($tmpModuleFile->{'fn'})) {                                     #read last module structure
+            die "Could not read from temp file containing $moduleName.sav";
+        }
+        $erfModule->{'tmpfil'}=$tmpModuleFile;                                                              #tuck the temp file into the erf for safekeeping
+        $erfModule->{'modulename'}="$moduleName";                                                   #tuck the module name into the erf for safekeeping
+
+
+        # looking for the area file. Sometimes it has a different name
+        my $areaResName = "";
+        for my $subResource (@{$erfModule->{'resources'}}) {
+            next if !defined $subResource->{'res_ext'} or $subResource->{'res_ext'} ne 'are';
+            $areaResName = lc $subResource->{'res_ref'};
+            last; # break
+        }
+
+        my $moduleDisplayName="";
+        if( $areaResName ne "" ){
+            my $tmpAreaFile;
+            unless($tmpAreaFile=$erfModule->export_resource_to_temp_file(uc($areaResName).".are")) {                     #export the module.ifo file as a temp file
+                die "Could not find ".uc($areaResName).".are inside of $moduleName.sav";
+            }
+            my $gffArea=Bioware::GFF->new();                                                            #create GFF for module.ifo
+            unless (my $tmp=$gffArea->read_gff_file($tmpAreaFile->{'fn'})) {                             #read module.ifo into GFF
+                die "Could not read from temp file containing $areaResName.are";
+            }
+
+            my $moduleDisplayNameStrref = $gffArea->{Main}{Fields}[$gffArea->{Main}->fbl('Name')]{Value}{StringRef};
+            if ($moduleDisplayNameStrref == -1) {
+                $moduleDisplayName=$gffArea->{Main}{'Fields'}[$gffArea->{Main}->fbl('Name')]{'Value'}{'Substrings'}[0]{Value};
+            } else {
+                $moduleDisplayName=Bioware::TLK::string_from_resref($registeredPath,$moduleDisplayNameStrref);
+            }
+
+            LogDebug "MODULE: ".$moduleDisplayName;
+        }
+
+
+
         # Populating GUI
         $tree->add(
             $treeItem."#".$moduleName,
-            -text=>$moduleName,
+            -text=>$moduleDisplayName." (".$moduleName.")",
             -data=>'can modify'
         );
     }
