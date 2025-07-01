@@ -491,7 +491,7 @@ sub What {
 
     my @real = @parms[3 .. $#parms];
     my $lin = join ('->', @real);
-    LogTrace("$gv" . "->$gm" . "->" . "$lin clicked"); ##logging edits
+    LogTrace "onClick event: $gv" . "->$gm" . "->" . "$lin"; ##logging edits
 
     $bandaid=0; #ouch! (This is to make the scrollbars update.)
     $tree->Subwidget('yscrollbar')->after(1000,\&updscrl);
@@ -2062,7 +2062,7 @@ sub Populate_OtherAreas{
         # Populating GUI
         $tree->add(
             $treeItem."#".$moduleName,
-            -text=>$moduleDisplayName." (".$moduleName.", size=$sizeInKbStr KB)",
+            -text=>$moduleDisplayName." (".uc($moduleName)."), size=$sizeInKbStr KB",
             -data=>'can modify'
         );
     }
