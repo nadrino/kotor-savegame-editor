@@ -1996,7 +1996,6 @@ sub Populate_OtherAreas{
     my $gameVersion = $treeLevels[0];
     my $registeredPath = GetRegisteredPath($gameVersion);
 
-
     my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
 
     # loop over all available resources in savegame.sav
@@ -2008,24 +2007,30 @@ sub Populate_OtherAreas{
         my $moduleName = "$resource->{'res_ref'}";
         next if lc($moduleName) eq lc($currentModuleName);
 
-        LogDebug "Opening module: ".$moduleName;
         my $tmpModuleFile;
-        unless ($tmpModuleFile=$erf_sav->export_resource_to_temp_file("$moduleName.sav")) {               #export the last module as a temp file
+        unless ($tmpModuleFile=$erf_sav->export_resource_to_temp_file("$moduleName.sav")) {
             die "Could not find $moduleName.sav inside of savegame.sav";
         }
+        my $size = -s $tmpModuleFile->{'fn'};
+        my $kb = $size / 1024;
 
-        my $erfModule=Bioware::ERF->new();                                                               #create ERF for last module
-        unless (my $tmp=$erfModule->read_erf($tmpModuleFile->{'fn'})) {                                     #read last module structure
+        my $erfModule=Bioware::ERF->new();
+        unless (my $tmp=$erfModule->read_erf($tmpModuleFile->{'fn'})) {
             die "Could not read from temp file containing $moduleName.sav";
         }
-        $erfModule->{'tmpfil'}=$tmpModuleFile;                                                              #tuck the temp file into the erf for safekeeping
-        $erfModule->{'modulename'}="$moduleName";                                                   #tuck the module name into the erf for safekeeping
+        $erfModule->{'tmpfil'}=$tmpModuleFile;
+        $erfModule->{'modulename'}="$moduleName";
 
 
         # looking for the area file. Sometimes it has a different name
         my $areaResName = "";
         for my $subResource (@{$erfModule->{'resources'}}) {
-            next if !defined $subResource->{'res_ext'} or $subResource->{'res_ext'} ne 'are';
+            if( !defined $subResource->{'res_ext'} ){
+                LogError "HAS UNDEFINED SUBRESOURCE: ".$subResource;
+                next;
+            }
+
+            next if $subResource->{'res_ext'} ne 'are';
             $areaResName = lc $subResource->{'res_ref'};
             last; # break
         }
@@ -2033,11 +2038,11 @@ sub Populate_OtherAreas{
         my $moduleDisplayName="";
         if( $areaResName ne "" ){
             my $tmpAreaFile;
-            unless($tmpAreaFile=$erfModule->export_resource_to_temp_file(uc($areaResName).".are")) {                     #export the module.ifo file as a temp file
+            unless($tmpAreaFile=$erfModule->export_resource_to_temp_file(uc($areaResName).".are")) {
                 die "Could not find ".uc($areaResName).".are inside of $moduleName.sav";
             }
-            my $gffArea=Bioware::GFF->new();                                                            #create GFF for module.ifo
-            unless (my $tmp=$gffArea->read_gff_file($tmpAreaFile->{'fn'})) {                             #read module.ifo into GFF
+            my $gffArea=Bioware::GFF->new();
+            unless (my $tmp=$gffArea->read_gff_file($tmpAreaFile->{'fn'})) {
                 die "Could not read from temp file containing $areaResName.are";
             }
 
@@ -2047,16 +2052,17 @@ sub Populate_OtherAreas{
             } else {
                 $moduleDisplayName=Bioware::TLK::string_from_resref($registeredPath,$moduleDisplayNameStrref);
             }
-
-            LogDebug "MODULE: ".$moduleDisplayName;
+        }
+        else{
+            LogError "Couldn't find area name.";
         }
 
-
+        my $sizeInKbStr = sprintf "%.2f", $size / 1024;
 
         # Populating GUI
         $tree->add(
             $treeItem."#".$moduleName,
-            -text=>$moduleDisplayName." (".$moduleName.")",
+            -text=>$moduleDisplayName." (".$moduleName.", size=$sizeInKbStr KB)",
             -data=>'can modify'
         );
     }
@@ -4533,11 +4539,9 @@ sub SpawnOtherAreasWidgets{
 
     # Bottom buttons
     my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
-        LogDebug "Apply changes in ".$treeitem;
-        LogDebug "DELETE? $isDelete";
+        LogWarning "Apply changes in ".$treeitem;
 
         if( $isDelete != 0 ){
-            LogDebug "DELETE ROUTINE";
             for my $resource (@{$erf_sav->{'resources'}}) {
                 # only considering "sav" resources
                 next if "$resource->{'res_ext'}" ne "sav";
@@ -4549,6 +4553,20 @@ sub SpawnOtherAreasWidgets{
                 }
             }
         }
+        else{
+            # check if it has been unchecked
+            for my $resource (@{$erf_sav->{'resources'}}) {
+                # only considering "sav" resources
+                next if "$resource->{'res_ext'}" ne "sav";
+
+                if( $resource->{'res_ref'} eq $selectedArea ) {
+                    if( defined $resource->{'res_del'} ){
+                        LogWarning "CANCELED DELETE OF MODULE ".$selectedArea;
+                        delete $resource->{'res_del'};
+                    }
+                }
+            }
+        }
 
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btnApply;
@@ -4557,8 +4575,17 @@ sub SpawnOtherAreasWidgets{
         -text=>"Commit Changes",
         -command=>sub {
             CommitChanges($treeitem);
-            # removing the entry displayed in the window
-            $tree->delete('entry',$treeitem);
+
+            # removing deleted entry
+            if( $isDelete == 1 ){
+                $tree->delete('entry',$treeitem);
+            }
+
+            #unspawn widgets
+            for my $widge (@spawned_widgets, $picture_label) {
+                $widge->destroy if Tk::Exists($widge);
+            }
+            @spawned_widgets=();
         })
         ->place(
             -relx=>870/$x,
