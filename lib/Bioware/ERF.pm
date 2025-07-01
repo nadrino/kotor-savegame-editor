@@ -662,11 +662,17 @@ sub write_erf {
         $self->{'build_day'}=(localtime)[7];
     }
 
-    # Filter out resources with a res_size equal to 0
+    # Filter out deleted resources
     $self->{'resources'} = [
         grep { !exists $_->{'res_del'} } @{$self->{'resources'}}
     ];
 
+    # re-indexing resources
+    my $index=0;
+    for my $resource (@{$self->{'resources'}}) {
+        $resource->{'res_id'} = $index;
+        $index += 1;
+    }
 
     $self->recalculate_packing();
 
