@@ -510,7 +510,8 @@ sub What {
 
     if ( ($tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
     {
-        unless ($tree->info('exists',$parm1."#")) {  #first time opening node
+        unless ($tree->info('exists',$parm1."#")) {
+            #first time opening node
             SpawnWidgets($parm1);
         }
     }
@@ -2065,6 +2066,10 @@ sub Populate_OtherAreas{
             -text=>$moduleDisplayName." (".uc($moduleName)."), size=$sizeInKbStr KB",
             -data=>'can modify'
         );
+
+        # # will be unfoldable
+        # $tree->add($treeItem."#".$moduleName."#",-text=>"");
+        # $tree->hide('entry',$treeItem."#".$moduleName."#");
     }
 
     $tree->autosetmode();
