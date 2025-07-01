@@ -4593,7 +4593,8 @@ sub SpawnOtherAreasWidgets{
         -command=>sub {
             CommitChanges($treeitem);
 
-            Populate_OtherAreas($treeitem);
+            # how do we handle more than one?
+            $tree->delete('entry', $treeitem);
 
             #unspawn widgets
             for my $widge (@spawned_widgets, $picture_label) {
