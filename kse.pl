@@ -4480,9 +4480,20 @@ sub SpawnOtherAreasWidgets{
 
     LogInfo "Selected area: ".$selectedArea;
 
+
+    my $lbl=$mw->Label(-text=>"THIS OPTION WILL REMOVE THE MODULE")->place(-relx=>620/$x,-rely=>70/$y);
+    push @spawned_widgets,$lbl;
+
+    my $isDelete = 0;
+    my $deleteBtn = $mw->Checkbutton(-text=>"REMOVE MODULE?",-variable=>\$isDelete,
+        -command=>sub {}
+    )->place(-relx=>650/$x,-rely=>100/$y);
+    push @spawned_widgets,$deleteBtn;
+
     # Bottom buttons
     my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
         LogDebug "Apply changes in ".$treeitem;
+        LogDebug "DELETE? $isDelete"
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btnApply;
 
