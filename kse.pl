@@ -4473,13 +4473,14 @@ sub SpawnSoundsetWidgets {
 }
 
 sub SpawnOtherAreasWidgets{
-    LogDebug "SpawnOtherAreasWidgets";
-
     my ($treeitem)=@_;
     my $selectedArea=(split /#/,$treeitem)[-1];
+    LogInfo "Selected module: ".$selectedArea;
 
-    LogInfo "Selected area: ".$selectedArea;
-
+    my $gameversion=(split /#/,$treeitem)[1];
+    my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
+    my $datahash=$tree->entrycget($root,-data);
+    my $erf_sav = $datahash->{'ERF-sav'};
 
     my $lbl=$mw->Label(-text=>"THIS OPTION WILL REMOVE THE MODULE")->place(-relx=>620/$x,-rely=>70/$y);
     push @spawned_widgets,$lbl;
@@ -4493,13 +4494,32 @@ sub SpawnOtherAreasWidgets{
     # Bottom buttons
     my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
         LogDebug "Apply changes in ".$treeitem;
-        LogDebug "DELETE? $isDelete"
+        LogDebug "DELETE? $isDelete";
+
+        if( $isDelete != 0 ){
+            LogDebug "DELETE ROUTINE";
+            for my $resource (@{$erf_sav->{'resources'}}) {
+                # only considering "sav" resources
+                next if "$resource->{'res_ext'}" ne "sav";
+
+                # get the name
+                my $moduleName = "$resource->{'res_ref'}";
+
+                # # TEST -- DONT UNCOMMENT/COMMIT
+                if( $moduleName eq $selectedArea ) {
+                    LogAlert "SET DELETE FLAG FOR ".$selectedArea;
+                    LogAlert "It will be remove on the next commit.";
+                    $resource->{'res_del'} = 1;
+                }
+            }
+        }
+
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     push @spawned_widgets,$btnApply;
 
     $btnCommit=$mw->Button(
         -text=>"Commit Changes",
-        -command=>sub { CommitChanges($treeitem) })
+        -command=>sub { CommitChanges($treeitem); })
         ->place(
             -relx=>870/$x,
             -rely=>520/$y,
