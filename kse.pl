@@ -2007,18 +2007,11 @@ sub Populate_OtherAreas{
         next if lc($moduleName) eq lc($currentModuleName);
 
         # Populating GUI
-        LogDebug "Found area: $moduleName";
         $tree->add(
             $treeItem."#".$moduleName,
             -text=>$moduleName,
             -data=>'can modify'
         );
-
-        # # TEST -- DONT UNCOMMENT/COMMIT
-        # if( $moduleName eq "610dan" ) {
-        #     LogError "del";
-        #     $resource->{'res_del'} = 1;
-        # }
     }
 
     $tree->autosetmode();
@@ -4502,11 +4495,7 @@ sub SpawnOtherAreasWidgets{
                 # only considering "sav" resources
                 next if "$resource->{'res_ext'}" ne "sav";
 
-                # get the name
-                my $moduleName = "$resource->{'res_ref'}";
-
-                # # TEST -- DONT UNCOMMENT/COMMIT
-                if( $moduleName eq $selectedArea ) {
+                if( $resource->{'res_ref'} eq $selectedArea ) {
                     LogAlert "SET DELETE FLAG FOR ".$selectedArea;
                     LogAlert "It will be remove on the next commit.";
                     $resource->{'res_del'} = 1;
@@ -4519,7 +4508,11 @@ sub SpawnOtherAreasWidgets{
 
     $btnCommit=$mw->Button(
         -text=>"Commit Changes",
-        -command=>sub { CommitChanges($treeitem); })
+        -command=>sub {
+            CommitChanges($treeitem);
+            # removing the entry displayed in the window
+            $tree->delete('entry',$treeitem);
+        })
         ->place(
             -relx=>870/$x,
             -rely=>520/$y,
