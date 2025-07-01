@@ -514,6 +514,12 @@ sub What {
             #first time opening node
             SpawnWidgets($parm1);
         }
+        else{
+            if ($parm1 =~ /OtherAreas/) {
+                # show the widget even if it's folded
+                SpawnWidgets($parm1);
+            }
+        }
     }
     elsif  ($tree->entrycget($parm1,-data) =~ /^jrl/) {
         SpawnJRLWidgets($parm1);
@@ -1237,14 +1243,7 @@ sub Populate_Level1 {
     $tree->add($treeitem."#OtherAreas#",-text=>"");  			$tree->hide('entry',$treeitem."#OtherAreas#");
 
     $tree->add($treeitem."#Area", -text=>'Current Area: '. $area_name." (".$lastModuleName.")",-data=>$area_name);
-    $tree->add($treeitem."#Area#Placeables",-text=>"Placeables");  	$tree->hide('entry',$treeitem."#Area#Placeables");
-    $tree->add($treeitem."#Area#Placeables#",-text=>"");  			$tree->hide('entry',$treeitem."#Area#Placeables#");
-    $tree->add($treeitem."#Area#Creatures",-text=>"Creatures");  	$tree->hide('entry',$treeitem."#Area#Creatures");
-    $tree->add($treeitem."#Area#Creatures#",-text=>"");  			$tree->hide('entry',$treeitem."#Area#Creatures#");
-    $tree->add($treeitem."#Area#Stores",-text=>"Stores");  			$tree->hide('entry',$treeitem."#Area#Stores");
-    $tree->add($treeitem."#Area#Stores#",-text=>"");  				$tree->hide('entry',$treeitem."#Area#Stores#");
-    $tree->add($treeitem."#Area#Doors",-text=>"Doors");  			$tree->hide('entry',$treeitem."#Area#Doors");
-    $tree->add($treeitem."#Area#Doors#",-text=>"");  				$tree->hide('entry',$treeitem."#Area#Doors#");
+    CreateAreaTree($treeitem."#Area");
     $tree->add($treeitem."#Area#XPosition",-text=>'XPosition: '.$XPosition,-data=>'can modify'); $tree->hide('entry',$treeitem."#Area#XPosition");
     $tree->add($treeitem."#Area#YPosition",-text=>'YPosition: '.$YPosition,-data=>'can modify'); $tree->hide('entry',$treeitem."#Area#YPosition");
     $tree->add($treeitem."#Area#ZPosition",-text=>'ZPosition: '.$ZPosition,-data=>$ZPosition);   $tree->hide('entry',$treeitem."#Area#ZPosition");
@@ -1317,6 +1316,21 @@ sub Populate_Level1 {
     $tree->autosetmode();
 
 }
+
+sub CreateAreaTree{
+    my $treeitem = shift;
+
+    $tree->add($treeitem."#Placeables",-text=>"Placeables");  	$tree->hide('entry',$treeitem."#Placeables");
+    $tree->add($treeitem."#Placeables#",-text=>"");  			$tree->hide('entry',$treeitem."#Placeables#");
+    $tree->add($treeitem."#Creatures",-text=>"Creatures");  	$tree->hide('entry',$treeitem."#Creatures");
+    $tree->add($treeitem."#Creatures#",-text=>"");  			$tree->hide('entry',$treeitem."#Creatures#");
+    $tree->add($treeitem."#Stores",-text=>"Stores");  			$tree->hide('entry',$treeitem."#Stores");
+    $tree->add($treeitem."#Stores#",-text=>"");  				$tree->hide('entry',$treeitem."#Stores#");
+    $tree->add($treeitem."#Doors",-text=>"Doors");  			$tree->hide('entry',$treeitem."#Doors");
+    $tree->add($treeitem."#Doors#",-text=>"");  				$tree->hide('entry',$treeitem."#Doors#");
+
+}
+
 #>>>>>>>>>>>>>>>>>>>>
 sub Read_Global_Vars{
     #>>>>>>>>>>>>>>>>>>>>
@@ -1980,7 +1994,7 @@ sub Populate_NPC{
 
 #>>>>>>>>>>>>>>>>>>>>
 sub Populate_OtherAreas{
-    LogDebug "Populate_OtherAreas";
+    LogInfo "Populate_OtherAreas";
 
     # Pulling game version and gamedir (which savegame)
     my $treeItem = shift;
@@ -2067,9 +2081,7 @@ sub Populate_OtherAreas{
             -data=>'can modify'
         );
 
-        # # will be unfoldable
-        # $tree->add($treeItem."#".$moduleName."#",-text=>"");
-        # $tree->hide('entry',$treeItem."#".$moduleName."#");
+        CreateAreaTree($treeItem."#".$moduleName);
     }
 
     $tree->autosetmode();
@@ -4581,10 +4593,7 @@ sub SpawnOtherAreasWidgets{
         -command=>sub {
             CommitChanges($treeitem);
 
-            # removing deleted entry
-            if( $isDelete == 1 ){
-                $tree->delete('entry',$treeitem);
-            }
+            Populate_OtherAreas($treeitem);
 
             #unspawn widgets
             for my $widge (@spawned_widgets, $picture_label) {
