@@ -2013,6 +2013,12 @@ sub Populate_OtherAreas{
             -text=>$moduleName,
             -data=>'can modify'
         );
+
+        # # TEST -- DONT UNCOMMENT/COMMIT
+        # if( $moduleName eq "610dan" ) {
+        #     LogError "del";
+        #     $resource->{'res_del'} = 1;
+        # }
     }
 
     $tree->autosetmode();
@@ -2275,6 +2281,9 @@ sub SpawnWidgets{
     }
     elsif ($treeitem =~/#Area#Doors#/) {
         SpawnDoorWidgets($treeitem,\$git_gff);
+    }
+    elsif ($treeitem =~/#OtherAreas#/){
+        SpawnOtherAreasWidgets($treeitem);
     }
     elsif ($treeitem =~/#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~/#Area#Stores#/){
         if($treeDepth < 7){
@@ -4466,9 +4475,26 @@ sub SpawnSoundsetWidgets {
 sub SpawnOtherAreasWidgets{
     LogDebug "SpawnOtherAreasWidgets";
 
-    # first arg should be the area name
+    my ($treeitem)=@_;
+    my $selectedArea=(split /#/,$treeitem)[-1];
 
-    # to be done
+    LogInfo "Selected area: ".$selectedArea;
+
+    # Bottom buttons
+    my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
+        LogDebug "Apply changes in ".$treeitem;
+    })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
+    push @spawned_widgets,$btnApply;
+
+    $btnCommit=$mw->Button(
+        -text=>"Commit Changes",
+        -command=>sub { CommitChanges($treeitem) })
+        ->place(
+            -relx=>870/$x,
+            -rely=>520/$y,
+            -anchor=>'ne'
+    );
+    push @spawned_widgets,$btnCommit;
 }
 sub SpawnDoorWidgets {
 
