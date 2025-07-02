@@ -592,6 +592,12 @@ sub What {
                 elsif ($levels[3] eq 'Stores') 		{ Populate_AreaContainer($parm1) }
                 elsif ($levels[3] eq 'Doors') 		{ Populate_AreaContainer($parm1) }
             }
+            if( $#levels == 4){
+                if    ($levels[4] eq 'Placeables'){ Populate_AreaContainer($parm1); }
+                elsif ($levels[4] eq 'Creatures') { Populate_AreaContainer($parm1); }
+                elsif ($levels[4] eq 'Stores') 	  { Populate_AreaContainer($parm1); }
+                elsif ($levels[4] eq 'Doors') 	  { Populate_AreaContainer($parm1); }
+            }
         }
     }
     #        $numhere->destroy if Tk::Exists($numhere);
@@ -2105,28 +2111,80 @@ sub Populate_AreaContainer{
     my @treeLevels = split /#/, $treeItem;
     shift @treeLevels;
     my $gameVersion = $treeLevels[0];
-    my $containerType = $treeLevels[3];
     my $registeredPath = GetRegisteredPath($gameVersion);
-
-    LogInfo "Populating ".$containerType."...";
 
     # Getting back the save data
     my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
     my $dataHash = $tree->entrycget($treeRoot,-data);
-    my $git_gff  = $dataHash->{'GFF-git'};
+
+    my $containerType;
+    my $git_gff;
+    if( $treeLevels[2] eq "Area" ){
+        $containerType = $treeLevels[3];
+        $git_gff  = $dataHash->{'GFF-git'};
+    }
+    else{
+        # OtherArea
+        $containerType = $treeLevels[4];
+        my $selectedArea = $treeLevels[3];
+
+        my $erf_sav = $dataHash->{'ERF-sav'};
+
+        my $tmpModuleFile;
+        unless ($tmpModuleFile=$erf_sav->export_resource_to_temp_file("$selectedArea.sav")) {
+            die "Could not find $selectedArea.sav inside of savegame.sav";
+        }
+
+        my $erfModule=Bioware::ERF->new();
+        unless (my $tmp=$erfModule->read_erf($tmpModuleFile->{'fn'})) {
+            die "Could not read from temp file containing $selectedArea.sav";
+        }
+        $erfModule->{'tmpfil'}=$tmpModuleFile;
+        $erfModule->{'modulename'}="$selectedArea";
+
+        # looking for the area file. Sometimes it has a different name
+        my $gitResName;
+        for my $subResource (@{$erfModule->{'resources'}}) {
+            if( !defined $subResource->{'res_ext'} ){
+                LogError "HAS UNDEFINED SUBRESOURCE: ".$subResource;
+                next;
+            }
+
+            next if $subResource->{'res_ext'} ne 'git';
+            $gitResName = lc $subResource->{'res_ref'};
+            last; # break
+        }
+
+        if( !defined($gitResName) ){
+            die "Could not find git file inside .sav area.";
+        }
+
+        my $tmpAreaFile;
+        unless($tmpAreaFile=$erfModule->export_resource_to_temp_file(uc($gitResName).".git")) {
+            die "Could not find ".uc($gitResName).".git inside of $selectedArea.sav";
+        }
+
+        $git_gff=Bioware::GFF->new();
+        unless (my $tmp=$git_gff->read_gff_file($tmpAreaFile->{'fn'})) {
+            die "Could not read from temp file containing $gitResName.are";
+        }
+
+    }
+
+    LogInfo "Populating ".$containerType."...";
 
     # Looking for containers
     my $containerList;
-    if( $containerType eq 'Stores' ){
+    if   ( $containerType eq 'Stores'     ){
         $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('StoreList')]{Value};
     }
     elsif( $containerType eq 'Placeables' ){
         $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Placeable List')]{Value};
     }
-    elsif( $containerType eq 'Creatures' ){
+    elsif( $containerType eq 'Creatures'  ){
         $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Creature List')]{Value};
     }
-    elsif( $containerType eq 'Doors' ){
+    elsif( $containerType eq 'Doors'      ){
         $containerList = $git_gff->{Main}{Fields}[$git_gff->{Main}->get_field_ix_by_label('Door List')]{Value};
     }
     else{ return; }
