@@ -2419,6 +2419,12 @@ sub SpawnWidgets{
             # delete area option will spawn
             SpawnOtherAreasWidgets($treeitem);
         }
+        else{
+            # we are inside a given area
+            SpawnContanierInventory($treeitem);
+        }
+
+
 
         # if( $treeitem =~ /#Placeable#/ || $treeitem =~ /#Placeable#/ || $treeitem =~/#Area#Stores#/ ){
         #     # SpawnAddInventoryWidgets($treeitem);
@@ -4614,6 +4620,51 @@ sub SpawnSoundsetWidgets {
 
 }
 
+sub SpawnContanierInventory{
+    my $treeitem = shift;
+
+    # my $isDelete = 0;
+    # my $deleteBtn = $mw->Checkbutton(-text=>"REMOVE CONTAINER?",-variable=>\$isDelete,
+    #     -command=>sub {}
+    # )->place(-relx=>650/$x,-rely=>100/$y);
+    # push @spawned_widgets,$deleteBtn;
+    #
+    #
+    # # Bottom buttons
+    # my $btnApply= $mw->Button(-text=>'Apply',-command=>sub {
+    #     LogWarning "Apply changes in ".$treeitem;
+    #
+    #     if( $isDelete != 0 ){
+    #         for my $resource (@{$erf_sav->{'resources'}}) {
+    #             # only considering "sav" resources
+    #             next if "$resource->{'res_ext'}" ne "sav";
+    #
+    #             if( $resource->{'res_ref'} eq $selectedArea ) {
+    #                 LogAlert "SET DELETE FLAG FOR ".$selectedArea;
+    #                 LogAlert "It will be remove on the next commit.";
+    #                 $resource->{'res_del'} = 1;
+    #             }
+    #         }
+    #     }
+    #     else{
+    #         # check if it has been unchecked
+    #         for my $resource (@{$erf_sav->{'resources'}}) {
+    #             # only considering "sav" resources
+    #             next if "$resource->{'res_ext'}" ne "sav";
+    #
+    #             if( $resource->{'res_ref'} eq $selectedArea ) {
+    #                 if( defined $resource->{'res_del'} ){
+    #                     LogWarning "CANCELED DELETE OF MODULE ".$selectedArea;
+    #                     delete $resource->{'res_del'};
+    #                 }
+    #             }
+    #         }
+    #     }
+    #
+    # })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
+    # push @spawned_widgets,$btnApply;
+
+}
 sub SpawnOtherAreasWidgets{
     my ($treeitem)=@_;
     my $selectedArea=(split /#/,$treeitem)[-1];
