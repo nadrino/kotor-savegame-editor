@@ -462,8 +462,8 @@ sub What {
     if(Exists($btnCommit))   {$btnCommit->destroy;}
 
     $parm1=shift;
-    my $gv;
-    my $gm;
+    my $gv="";
+    my $gm="";
 
     my @parms = split /#/, $parm1;
     #	print join /\n/, @parms;
@@ -475,14 +475,15 @@ sub What {
     if ($parms[1] == 3 && $kseInitializer->{use_tsl_cloud} == 1) { $gv = "Kotor 2/TSL Cloud"; }
 
     my $ent = $parms[2];
-    $_ = $ent;
-    my $su = $_;
-    $_ = $ent;
-    /(.......-.)/;
-    $gm = $ent;
-    $gm =~ s#$1##;
-
-    $_ = $su;
+    if( defined($ent) ){
+        $_ = $ent;
+        my $su = $_;
+        $_ = $ent;
+        /(.......-.)/;
+        $gm = $ent;
+        $gm =~ s#$1##;
+        $_ = $su;
+    }
 
     #	print "\$parm1 on $. is: $parm1";
     my $parm1a = $parm1 ."#q";
@@ -491,7 +492,7 @@ sub What {
 
     my @real = @parms[3 .. $#parms];
     my $lin = join ('->', @real);
-    LogTrace "onClick event: $gv" . "->$gm" . "->" . "$lin"; ##logging edits
+    LogTrace "onClick: $gv" . "->$gm" . "->" . "$lin"; ##logging edits
 
     $bandaid=0; #ouch! (This is to make the scrollbars update.)
     $tree->Subwidget('yscrollbar')->after(1000,\&updscrl);
@@ -508,7 +509,7 @@ sub What {
     @levels=split /#/,$parm1;
     shift @levels;
 
-    if ( ($tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
+    if ( ( defined($tree->entrycget($parm1,-data)) && $tree->entrycget($parm1,-data) eq 'can modify') || ((split /#/, $parm1)[-1] =~ /NPC\d+/) || ($parm1 =~ /Equipment#/) )
     {
         unless ($tree->info('exists',$parm1."#")) {
             #first time opening node
@@ -521,7 +522,7 @@ sub What {
             }
         }
     }
-    elsif  ($tree->entrycget($parm1,-data) =~ /^jrl/) {
+    elsif (defined($tree->entrycget($parm1, -data)) && $tree->entrycget($parm1, -data) =~ /^jrl/) {
         SpawnJRLWidgets($parm1);
     }
     else {
@@ -537,7 +538,7 @@ sub What {
 
     my $mode=$tree->getmode($parm1);
 
-    if ($leaf_memory{$parm1} eq $mode){  #this bit prevents re-entry
+    if ( defined($leaf_memory{$parm1}) && $leaf_memory{$parm1} eq $mode){  #this bit prevents re-entry
         return;
     }
 
@@ -1184,7 +1185,15 @@ sub Populate_Level1 {
     my $ZPosition     =$mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('ZPosition')]{'Value'};
 
     my $mod_playerequiplist = $mod_playerlist->{Fields}[$mod_playerlist->get_field_ix_by_label('Equip_ItemList')]{Value};
-    my ($head, $implant, $rarm, $larm, $gloves, $belt, $rweapon, $rweapon2, $lweapon, $lweapon2, $armor);
+
+    my $head="";
+    my $implant="";
+    my $gloves="";
+    my $belt="";
+    my $armor="";
+    my $larm=""; my $rarm="";
+    my $lweapon=""; my $rweapon="";
+    my $rweapon2=""; my $lweapon2="";
 
     my $in = 0;
     foreach (@$mod_playerequiplist)
@@ -1252,7 +1261,10 @@ sub Populate_Level1 {
     $tree->add($treeitem."#Gender",-text=>"Gender: $genders{$gender}",-data=>'can modify');
     $tree->add($treeitem."#Appearance",-text=>"Appearance: $appearance_hash{$appearance}",-data=>'can modify');
     $tree->add($treeitem."#Portrait",-text=>"Portrait: $portraits_hash{$portrait}",-data=>'can modify');
-    $tree->add($treeitem."#Soundset",-text=>"Soundset: $soundset_hash{$soundset}",-data=>'can modify');
+
+    my $selectedSoundset="N/A"; if( defined($soundset_hash{$selectedSoundset}) ){ $selectedSoundset=$soundset_hash{$selectedSoundset}; }
+    $tree->add($treeitem."#Soundset",-text=>"Soundset: $selectedSoundset",-data=>'can modify');
+
     $tree->add($treeitem."#Attributes",-text=>"Attributes");
     $tree->add($treeitem."#Equipment",-text=>"Equipment", -data=>$mod_playerequiplist);
     $tree->add($treeitem."#Equipment#Head",    -text=>"Head:\t\t$head");           $tree->hide('entry', $treeitem."#Equipment#Head");
