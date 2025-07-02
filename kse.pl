@@ -2409,16 +2409,27 @@ sub SpawnWidgets{
     elsif (($lastleaf eq 'CheatUsed') || ($lastleaf eq 'Min1HP')) {
         ($tree->entrycget($treeitem,-text)) =~ /: (\d)/;
         SpawnCheatWidgets ($treeitem,$1,\$res_gff,\$pty_gff,\$ifo_gff); }
-    elsif ($treeitem =~/#Inventory$/) {
-        SpawnAddInventoryWidgets($treeitem); }
+    elsif ($treeitem =~/#Inventory$/) { SpawnAddInventoryWidgets($treeitem); }
     elsif ($treeitem =~/#Inventory#/) {
         SpawnInventoryWidgets($treeitem,\$inv_gff);
     }
+    elsif ($treeitem =~/#OtherAreas#/){
+
+        if( $treeDepth == 5 ){
+            # delete area option will spawn
+            SpawnOtherAreasWidgets($treeitem);
+        }
+
+        # if( $treeitem =~ /#Placeable#/ || $treeitem =~ /#Placeable#/ || $treeitem =~/#Area#Stores#/ ){
+        #     # SpawnAddInventoryWidgets($treeitem);
+        # }
+        # elsif( $treeitem =~/#Doors#/ ){
+        #     # SpawnDoorWidgets($treeitem,\$git_gff);
+        # }
+
+    }
     elsif ($treeitem =~/#Area#Doors#/) {
         SpawnDoorWidgets($treeitem,\$git_gff);
-    }
-    elsif ($treeitem =~/#OtherAreas#/){
-        SpawnOtherAreasWidgets($treeitem);
     }
     elsif ($treeitem =~/#Area#Placeables#/ || $treeitem =~ /#Area#Creatures#/ || $treeitem =~/#Area#Stores#/){
         if($treeDepth < 7){
@@ -2428,10 +2439,6 @@ sub SpawnWidgets{
             SpawnInventoryWidgets($treeitem,\$git_gff);
         }
     }
-    # elsif ($treeitem =~/#OtherArea#/){
-    #     # to be done
-    #     SpawnOtherAreasWidgets($treeitem);
-    # }
     elsif ($treeitem =~/#Equipment#/) {#print "laun";
         if($treeitem =~/#(NPC[0-9]*)#/)
         {
