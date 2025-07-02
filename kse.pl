@@ -526,9 +526,7 @@ sub What {
         SpawnJRLWidgets($parm1);
     }
     else {
-        for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-            $widge->destroy if Tk::Exists($widge);    }
-        @spawned_widgets=();
+        ClearWidgets();
         eval {$picture_label_photo->delete};
     }
 
@@ -1619,10 +1617,9 @@ sub Current_Party{
     my $gameversion=(split /#/,$treeitem)[1];
     my $registered_path;
     my %standard_npcs;
-    for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-        $widge->destroy if Tk::Exists($widge);
-    }
-    @spawned_widgets=();
+
+    ClearWidgets();
+
     eval {$picture_label_photo->delete};
 
     if    ($gameversion==1) {
@@ -2291,6 +2288,13 @@ sub Populate_AreaContainer{
 }
 
 
+sub ClearWidgets{
+    for my $widge (@spawned_widgets, $picture_label) {
+        $widge->destroy if Tk::Exists($widge);
+    }
+    @spawned_widgets=();
+}
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>
 sub SpawnWidgets{
     #>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -2300,10 +2304,8 @@ sub SpawnWidgets{
     # Outputs: none
     # Side-effects: creates/destroys widges on side panel
     my $treeitem=shift;
-    for my $widge (@spawned_widgets, $picture_label) {   #unspawn old widgets
-        $widge->destroy if Tk::Exists($widge);
-    }
-    @spawned_widgets=();
+
+    ClearWidgets();
 
     eval {$picture_label_photo->delete};
     my $use_generic_widgets=join '#', ('z', qw (
@@ -4664,10 +4666,7 @@ sub SpawnOtherAreasWidgets{
             CommitChanges($treeitem);
 
             #unspawn widgets
-            for my $widge (@spawned_widgets, $picture_label) {
-                $widge->destroy if Tk::Exists($widge);
-            }
-            @spawned_widgets=();
+            ClearWidgets();
 
             # rebuild the other area tree
             my $parent = $tree->info('parent', $treeitem);
@@ -6718,9 +6717,8 @@ sub SpawnJRLWidgets() {
     my $jrl_categories_arr_ref;
     my $registered_path;
 
-    for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-        $widge->destroy if Tk::Exists($widge);    }
-    @spawned_widgets=();
+    ClearWidgets();
+
     eval {$picture_label_photo->delete};
 
     if ($gameversion==1) {
@@ -6870,9 +6868,8 @@ sub SpawnAddJRLWidgets {
     my $registered_path;
     my $jrl_categories_arr_ref;
 
-    for my $widge (@spawned_widgets,$picture_label) {   #unspawn old widgets
-        $widge->destroy if Tk::Exists($widge);    }
-    @spawned_widgets=();
+    ClearWidgets();
+
     eval {$picture_label_photo->delete};
 
     if ($gameversion==1) {
