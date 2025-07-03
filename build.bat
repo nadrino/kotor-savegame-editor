@@ -25,13 +25,13 @@ set PATH=%HERE%\strawberry-perl-*32*\perl\site\bin;%PATH%
 
 :: Compile
 echo Compiling KSE...
-call pp kse.pl -o KSE.exe
-@REM call pp kse.pl -o KSE.exe --gui
+@REM call pp kse.pl -o KSE.exe
+call pp kse.pl -o KSE.exe --gui
 
 echo Applying icon...
 :: Causes corruption -> not used for debug
-@REM call perl -e "use Win32::Exe; $exe = Win32::Exe->new('KSE.exe'); $exe->set_single_group_icon('boba.ico'); $exe->write;"
-@REM perl icon.pl kse.exe boba.ico
+call perl -e "use Win32::Exe; $exe = Win32::Exe->new('KSE.exe'); $exe->set_single_group_icon('boba.ico'); $exe->write;"
+perl icon.pl kse.exe boba.ico
 
 echo Launching KSE...
 call .\KSE.exe
