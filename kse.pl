@@ -2024,7 +2024,7 @@ sub Populate_OtherAreas{
     my $erf_sav  = $dataHash->{'ERF-sav'};
     my $res_gff  = $dataHash->{'GFF-res'};
     my $gameVersion = $treeLevels[0];
-    my $registeredPath = GetRegisteredPath($gameVersion);
+    my $registeredPath = GetRegisteredSavePath($gameVersion);
 
     my $currentModuleName=$res_gff->{Main}{Fields}[$res_gff->{Main}->get_field_ix_by_label('LASTMODULE')]{Value};
 
@@ -2108,7 +2108,7 @@ sub Populate_AreaContainer{
     my @treeLevels = split /#/, $treeItem;
     shift @treeLevels;
     my $gameVersion = $treeLevels[0];
-    my $registeredPath = GetRegisteredPath($gameVersion);
+    my $registeredPath = GetRegisteredSavePath($gameVersion);
 
     # Getting back the save data
     my $treeRoot = '#'.$treeLevels[0].'#'.$treeLevels[1];
@@ -6213,29 +6213,6 @@ sub RWhat {
 
 
 # Generic functions
-sub GetRegisteredPath {
-    my $gameversion = shift;
-
-    my $registered_path;
-
-    if ($gameversion==1) {
-        $registered_path=$kseInitializer->{path}->{kotor};
-    }
-    elsif ($gameversion==2) {
-        $registered_path=$kseInitializer->{path}->{tsl};
-    }
-    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 1) {
-        $registered_path=$kseInitializer->{path}->{tsl};
-    }
-    elsif ($gameversion==3 && $kseInitializer->{use_tsl_cloud} == 0) {
-        $registered_path=$kseInitializer->{path}->{tjm};
-    }
-    elsif ($gameversion==4) {
-        $registered_path=$kseInitializer->{path}->{tjm};
-    }
-
-    return $registered_path
-}
 sub GetRegisteredSavePath {
     my $gameversion = shift;
 
@@ -6259,6 +6236,12 @@ sub GetRegisteredSavePath {
 
     return $registered_path
 }
+sub GetGameVersion{
+    my $treeitem=shift;
+    my $gameversion=(split /#/,$treeitem)[1];
+    return $gameversion;
+}
+
 sub LoadData {
     LogInfo "Loading save data...";
 
@@ -6274,7 +6257,7 @@ sub LoadData {
     my %soundset_hash;
     my %standard_npcs;
 
-    if ($gameversion==1) {
+    if    ($gameversion==1) {
         $registered_path=$kseInitializer->{path}->{kotor_save};
         %genders=%gender_hash1;
         %appearance_hash=%appearance_hash1;
@@ -7216,7 +7199,7 @@ sub try_extracted_data {
 sub Load {
     my $branch_to_populate=shift;
     #Read KotOR1 saves
-    if ($kseInitializer->{k1_installed} && (!(defined $branch_to_populate) || ($branch_to_populate==1))) {
+    if ($kseInitializer->{k1_installed} && (!(defined $branch_to_populate) || ($branch_to_populate==1)))    {
         LogInfo "Reading KotOR saves...";
         unless (opendir SAVDIR, $kseInitializer->{path}->{kotor_save}) {                                        #saves directory not found
             $mw->messageBox(-title=>'Directory not found',
