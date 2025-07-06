@@ -4685,9 +4685,9 @@ sub SpawnUseCompressWidgets{
     )->place(-relx=>620/$x,-rely=>100/$y);
     push @spawned_widgets,$useCompressBtn;
 
-    my $lbl=$mw->Label(-text=>"Uncheck for using the save on PC versions")->place(-relx=>620/$x,-rely=>130/$y);
+    my $lbl=$mw->Label(-text=>"Uncheck for using the save on PC/XBox")->place(-relx=>620/$x,-rely=>130/$y);
     push @spawned_widgets,$lbl;
-    my $lbl2=$mw->Label(-text=>"Check for using the save on Nintendo Switch versions")->place(-relx=>620/$x,-rely=>160/$y);
+    my $lbl2=$mw->Label(-text=>"Check for using the save on Nintendo Switch")->place(-relx=>620/$x,-rely=>160/$y);
     push @spawned_widgets,$lbl2;
 
     my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
