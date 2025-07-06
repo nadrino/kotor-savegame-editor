@@ -1254,7 +1254,7 @@ sub Populate_Level1 {
     }
     $tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
 
-    $tree->add($treeitem."#Compress",-text=>"Use Aspyr compression: ".$isCompressed);
+    $tree->add($treeitem."#Compress",-text=>"Is Compressed: ".$isCompressed, -data=>'can modify');
 
     $tree->add($treeitem."#OtherAreas",-text=>"Other Areas");
     $tree->add($treeitem."#OtherAreas#",-text=>"");  			$tree->hide('entry',$treeitem."#OtherAreas#");
@@ -2293,16 +2293,14 @@ sub Populate_AreaContainer{
 
 
 sub ClearWidgets{
+    LogDebug "ClearWidgets";
     for my $widge (@spawned_widgets, $picture_label) {
         $widge->destroy if Tk::Exists($widge);
     }
     @spawned_widgets=();
 }
 
-#>>>>>>>>>>>>>>>>>>>>>>>>>>
 sub SpawnWidgets{
-    #>>>>>>>>>>>>>>>>>>>>>>>>>>
-
     # Purpose: to create/destroy widgets according to the leaf selected
     # Inputs: tree item selected
     # Outputs: none
@@ -2404,6 +2402,9 @@ sub SpawnWidgets{
     elsif ($lastleaf eq 'SaveGameName') {
         ($tree->entrycget($treeitem,-text)) =~ /: (.*)/;
         SpawnSaveGameNameWidgets  ($treeitem,$1,\$res_gff) }
+    elsif ($lastleaf eq 'Compress'){
+        SpawnUseCompressWidgets($treeitem);
+    }
     elsif ($lastleaf eq 'FirstName') {
         ($tree->entrycget($treeitem,-text)) =~ /: (.*)/;
         SpawnFirstNameWidgets  ($treeitem,$1,\$ifo_gff) }
@@ -4668,6 +4669,48 @@ sub SpawnContanierInventory{
     # })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
     # push @spawned_widgets,$btnApply;
 
+}
+sub SpawnUseCompressWidgets{
+    my ($treeitem)=@_;
+    my $gameversion=(split /#/,$treeitem)[1];
+    my $root='#'.$gameversion.'#'.(split /#/,$treeitem)[2];
+    my $datahash=$tree->entrycget($root,-data);
+    my $erf_sav = $datahash->{'ERF-sav'};
+    my $res_gff = $datahash->{'GFF-res'};
+    my $pty_gff = $datahash->{'GFF-pty'};
+
+    my $useCompress = $erf_sav->{'isCompressed'};
+    my $useCompressBtn = $mw->Checkbutton(-text=>"Savegame is using Aspyr compression?",-variable=>\$useCompress,
+        -command=>sub {}
+    )->place(-relx=>650/$x,-rely=>100/$y);
+    push @spawned_widgets,$useCompressBtn;
+
+    my $lbl=$mw->Label(-text=>"Uncheck for using the save on PC versions")->place(-relx=>620/$x,-rely=>130/$y);
+    push @spawned_widgets,$lbl;
+    my $lbl2=$mw->Label(-text=>"Check for using the save on Nintendo Switch versions")->place(-relx=>620/$x,-rely=>160/$y);
+    push @spawned_widgets,$lbl2;
+
+    my $btnApply=$mw->Button(-text=>'Apply',-command=>sub {
+        LogWarning "Apply changes in ".$treeitem;
+
+        if( $useCompress == 1 ){ LogInfo "Using compression selected."; }
+        else{ LogInfo "Using compression unselected."; }
+        $erf_sav->{'isCompressed'} = $useCompress;
+        $res_gff->{'isCompressed'} = $useCompress;
+        $pty_gff->{'isCompressed'} = $useCompress;
+
+    })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
+    push @spawned_widgets,$btnApply;
+
+    $btnCommit=$mw->Button(
+        -text=>"Commit Changes",
+        -command=>sub { CommitChanges($treeitem); })
+        ->place(
+        -relx=>870/$x,
+        -rely=>520/$y,
+        -anchor=>'ne'
+    );
+    push @spawned_widgets,$btnCommit;
 }
 sub SpawnOtherAreasWidgets{
     my ($treeitem)=@_;
