@@ -4678,7 +4678,21 @@ sub SpawnOtherAreasWidgets{
     my $lbl=$mw->Label(-text=>"THIS OPTION WILL REMOVE THE MODULE")->place(-relx=>620/$x,-rely=>70/$y);
     push @spawned_widgets,$lbl;
 
-    my $isDelete = 0;
+    sub FindAreaResource{
+        my $areaToLookFor = shift;
+        for my $resource (@{$erf_sav->{'resources'}}) {
+            # only considering "sav" resources
+            next if "$resource->{'res_ext'}" ne "sav";
+
+            if( $resource->{'res_ref'} eq $areaToLookFor ) {
+                return $resource;
+            }
+        }
+        LogError "Couldn't find resource ".$areaToLookFor
+    };
+    my $selectedAreaResource = FindAreaResource($selectedArea);
+
+    my $isDelete = defined($selectedAreaResource->{'res_del'});
     my $deleteBtn = $mw->Checkbutton(-text=>"REMOVE MODULE?",-variable=>\$isDelete,
         -command=>sub {}
     )->place(-relx=>650/$x,-rely=>100/$y);
@@ -4689,30 +4703,13 @@ sub SpawnOtherAreasWidgets{
         LogWarning "Apply changes in ".$treeitem;
 
         if( $isDelete != 0 ){
-            for my $resource (@{$erf_sav->{'resources'}}) {
-                # only considering "sav" resources
-                next if "$resource->{'res_ext'}" ne "sav";
-
-                if( $resource->{'res_ref'} eq $selectedArea ) {
-                    LogAlert "SET DELETE FLAG FOR ".$selectedArea;
-                    LogAlert "It will be remove on the next commit.";
-                    $resource->{'res_del'} = 1;
-                }
-            }
+            LogAlert "SET DELETE FLAG FOR ".$selectedArea;
+            LogAlert "It will be remove on the next commit.";
+            $selectedAreaResource->{'res_del'} = 1;
         }
         else{
-            # check if it has been unchecked
-            for my $resource (@{$erf_sav->{'resources'}}) {
-                # only considering "sav" resources
-                next if "$resource->{'res_ext'}" ne "sav";
-
-                if( $resource->{'res_ref'} eq $selectedArea ) {
-                    if( defined $resource->{'res_del'} ){
-                        LogWarning "CANCELED DELETE OF MODULE ".$selectedArea;
-                        delete $resource->{'res_del'};
-                    }
-                }
-            }
+            LogWarning "CANCELED DELETE OF MODULE ".$selectedArea;
+            delete $selectedAreaResource->{'res_del'};
         }
 
     })->place(-relx=>600/$x,-rely=>520/$y,-relwidth=>60/$x);
