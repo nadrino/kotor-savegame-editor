@@ -1199,6 +1199,8 @@ sub Populate_Level1 {
     my $lweapon=""; my $rweapon="";
     my $rweapon2=""; my $lweapon2="";
 
+    my $isCompressed = $erf->{'isCompressed'};
+
     my $in = 0;
     foreach (@$mod_playerequiplist)
     {
@@ -1251,6 +1253,8 @@ sub Populate_Level1 {
         $in++;
     }
     $tree->add($treeitem."#SaveGameName", -text=>'Savegame Name: ' . $save_game_name, -data=>'can modify');
+
+    $tree->add($treeitem."#Compress",-text=>"Use Aspyr compression: ".$isCompressed);
 
     $tree->add($treeitem."#OtherAreas",-text=>"Other Areas");
     $tree->add($treeitem."#OtherAreas#",-text=>"");  			$tree->hide('entry',$treeitem."#OtherAreas#");
