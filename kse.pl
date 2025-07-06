@@ -4680,9 +4680,9 @@ sub SpawnUseCompressWidgets{
     my $pty_gff = $datahash->{'GFF-pty'};
 
     my $useCompress = $erf_sav->{'isCompressed'};
-    my $useCompressBtn = $mw->Checkbutton(-text=>"Savegame is using Aspyr compression?",-variable=>\$useCompress,
+    my $useCompressBtn = $mw->Checkbutton(-text=>"Compress the savegame files?",-variable=>\$useCompress,
         -command=>sub {}
-    )->place(-relx=>650/$x,-rely=>100/$y);
+    )->place(-relx=>620/$x,-rely=>100/$y);
     push @spawned_widgets,$useCompressBtn;
 
     my $lbl=$mw->Label(-text=>"Uncheck for using the save on PC versions")->place(-relx=>620/$x,-rely=>130/$y);
